@@ -41,7 +41,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
     ],
-    keywords='batch systems parallelization',
+    keywords='asr automated review batch',
     packages=find_packages(exclude=['hpc', 'preparation']),
 
     install_requires=["pandas"],
@@ -54,18 +54,17 @@ setup(
     # },
     # data_files=[('my_data', ['data/data_file'])],
 
-#     entry_points={
-#         'console_scripts': [
-#             'batchgen=batchgen.__main__:main'],
-#
-#     },
+    entry_points={
+        'console_scripts': [
+            'pickle_asr=pargrid.pickle:main'],
+    },
 
     project_urls={
         'Bug Reports':
             "https://github.com/msdslab/"
             "automated-systematic-review-simulations/issues",
         'Source':
-            'https://github.com/msdslab'
-            '/automated-systematic-review-simulations',
+            "https://github.com/msdslab"
+            "/automated-systematic-review-simulations",
     },
 )
