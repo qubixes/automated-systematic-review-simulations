@@ -85,28 +85,3 @@ batch_from_params(var_param, fix_param,
 
 This creates all the batch files needed in current directory/batch.slurm\_lisa/${job\_name}.
 
-## Simulations
-
-```python
-
-import asr
-from asr.model import create_lstm_model
-
-# load the data 
-with open(PATH_TO_PICKLE, 'rb') as f:
-    X, y, embedding_matrix = pickle.load(f)
-
-# create the model
-model = create_lstm_model(
-    backwards=True,
-    dropout=0.4,
-    optimizer='rmsprop',
-    embedding_layer=embedding_matrix
-)
-
-reviewer = asr.ReviewOracle(model)
-reviewer.oracle(X, y)
-
-# store the review training logs and other metadata
-reviewer.logs
-```
