@@ -44,7 +44,11 @@ setup(
     keywords='asr automated review batch',
     packages=find_packages(exclude=['hpc', 'preparation']),
 
-    install_requires=["pandas", "batchgen", "numpy", "asr"],
+    install_requires=[
+        "pandas", "numpy", "sklearn", "keras",
+        "asr @ git+https://github.com/msdslab/automated-systematic-review",
+        "batchgen @ git+https://github.com/UtrechtUniversity/hpc-batch-gen",
+    ],
 
     extras_require={
     },

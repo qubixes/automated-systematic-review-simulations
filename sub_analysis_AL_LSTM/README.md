@@ -15,7 +15,7 @@ We would like to validate our model on several databases with different sizes an
 * Number of simulations : Each setting is repeated 50 times.
 
 ## Other simulation settings
-* "prior_included", "prior_excluded": To compare query strategies, they should have the same starting points. 
+* "prior\_included", "prior\_excluded": To compare query strategies, they should have the same starting points. 
 Therefore, a list of indices, presenting ten initially included and ten initially excluded papers, are given to the asr software as input.
 * "n_queries": The number of active learning iterations is set to 12.
 * "n_instances": In each iteration, 40 papers are reviewed.
@@ -24,24 +24,27 @@ Above settings are chosen to have a trained dataset of 500 papers within a reaso
 
 ## Run on HPC
 ### Generate batch files
-1. Navigate to "sub_analysis_AL_LSTM" folder.
-2. Run ``` python simulation_LSTM.py```
-3. The output is located in "batch.slurm_lisa" folder
+1. Navigate to the "sub\_analysis\_AL_LSTM" folder.
+2. Run ```python simulation_LSTM.py```
+3. The batch files are located in the "batch.slurm_lisa" folder
 
 ### Copy files to HPC
 In your home directory create a folder including:
+
 ``` bash
 asr/
 ├── pickle
 |       ├── ptsd_vandeschoot_words_20000.pkl
 ├── batch.slurm_lisa
 ```
+
 ### Run simulation
-1. Navigate to "asr" folder.
-2. Run 
+1. Run 
+
 ``` bash
 for FILE in batch.slurm_lisa/asr_sim_lstm/batch*.sh; 
     do sbatch $FILE; 
 done
 ```
-3. The output is located in "output" folder
+
+2. The output will be in the same folder under "output/".
