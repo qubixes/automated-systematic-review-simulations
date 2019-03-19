@@ -29,13 +29,14 @@ The simulations in this study are listed on this page:
 
 ## Data preparation
 
-To prevent waste due to the loading of the embedding file, a Python pickle file is created with only the words that are in the abstracts. 
+To prevent waste due to the loading of the whole embedding file, a Python pickle file is created with only the words that are in the abstracts. 
 
 They can be created from the CLI:
 
 ``` bash
 pickle_asr data_file embedding_file [--words=20000]
 ```
+
 From within Python:
 
 ``` python
@@ -50,7 +51,7 @@ batch_from_params(var_param, fix_param, data_file, embedding_file, param_file, c
 
 Pickle files are created in the current working directory/pickle.
 
-To run a simulation, one needs code such as:
+To run a simulation, one needs code such as ([see](sub_analysis_AL_LSTM/README.md)):
 
 ``` python 
 #!/opt/local/bin/python
@@ -80,8 +81,13 @@ data_file = "../../schoot.csv"
 # Create a batch from the above file names and data sources.
 batch_from_params(var_param, fix_param,
                   data_file, embedding_file, param_file, config_file)
-
 ```
 
 This creates all the batch files needed in current directory/batch.slurm\_lisa/${job\_name}.
+
+
+## Note on pickle files
+
+Note that pickle files are not generally transplantable between different systems. So, if you get weird import errors, use the original data+embedding files to create new pickle files.
+
 

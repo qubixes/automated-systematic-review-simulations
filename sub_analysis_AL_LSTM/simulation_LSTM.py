@@ -20,7 +20,7 @@ fix_param["n_instances"] = 40
 param_file = "params.csv"
 config_file = "slurm_lisa.ini"
 embedding_file = "../../cc.en.300.vec"
-data_file = "../../schoot.csv"
+data_file = "../../schoot-lgmm-ptsd.csv"
 
 # Create a batch from the above file names and data sources.
 batch_from_params(var_param, fix_param,
