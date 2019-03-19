@@ -1,6 +1,6 @@
 #!/opt/local/bin/python
 
-from pargrid.batch_generator import batch_from_params
+from pargrid import batch_from_params
 
 
 var_param = {'simulation': range(50),
@@ -16,7 +16,9 @@ fix_param["n_instances"] = 40
 
 # sub_analysis_LSTM/
 param_file = "params.csv"
-data_file = "pickle/ptsd_vandeschoot_words_20000.pkl"
 config_file = "slurm_lisa.ini"
+embedding_file = "../../cc.en.300.vec"
+data_file = "../../schoot.csv"
 
-batch_from_params(var_param, fix_param, data_file, param_file, config_file)
+batch_from_params(var_param, fix_param,
+                  data_file, embedding_file, param_file, config_file)

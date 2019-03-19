@@ -1,8 +1,12 @@
+import random
+import os
+
 import pandas as pd
 import numpy as np
-import random
-from batchgen import batch_from_strings
 from sklearn.model_selection import ParameterGrid
+
+from batchgen import batch_from_strings
+from pargrid.pickle import write_pickle
 
 
 def _create_df_parameter_grid(var_param, sample=None):
@@ -78,14 +82,16 @@ def pre_compute_defaults():
     """
     # TODO: install asr package
     # check if results.log is a file or folder
-    mydef = """\
+    cwd = os.getcwd()
+    mydef = f"""\
 module load eb
 module load Python/3.6.1-intel-2016b
 
-cd $HOME/asr
+BASE_DIR={cwd}
+cd $BASE_DIR
 mkdir -p "$TMPDIR"/output
 rm -rf "$TMPDIR"/results.log
-cp -r $HOME/asr/pickle "$TMPDIR"
+cp -r $BASE_DIR/pickle "$TMPDIR"
 cd "$TMPDIR"
     """
     return mydef
@@ -98,7 +104,7 @@ def post_compute_defaults():
     str:
         List of lines to execute after computation.
     """
-    mydef = 'cp -r "$TMPDIR"/output  $HOME/asr'
+    mydef = 'cp -r "$TMPDIR"/output  $BASE_DIR'
     return mydef
 
 
@@ -125,7 +131,14 @@ def generate_shell_script(data_file, param_file, config_file):
                        force_clear=True)
 
 
-def batch_from_params(var_param, fix_param, data_file, param_file, config_file,
-                      sample=None):
+def batch_from_params_pickle(var_param, fix_param, pickle_file, param_file,
+                             config_file, sample=None):
     params_to_file(var_param, fix_param, param_file, sample)
-    generate_shell_script(data_file, param_file, config_file)
+    generate_shell_script(pickle_file, param_file, config_file)
+
+
+def batch_from_params(var_param, fix_param, data_file, embedding_file,
+                      param_file, config_file, sample=None):
+    pickle_file = write_pickle(data_file, embedding_file)
+    batch_from_params_pickle(var_param, fix_param, pickle_file, param_file,
+                             config_file, sample)

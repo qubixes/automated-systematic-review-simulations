@@ -44,7 +44,7 @@ setup(
     keywords='asr automated review batch',
     packages=find_packages(exclude=['hpc', 'preparation']),
 
-    install_requires=["pandas"],
+    install_requires=["pandas", "batchgen", "numpy", "asr"],
 
     extras_require={
     },

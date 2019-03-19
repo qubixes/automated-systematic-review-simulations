@@ -17,9 +17,9 @@ def pickle_dir(create=True):
     return pdir
 
 
-def pickle_file(data_file, num_words):
+def pickle_file(data_file, num_words=20000, create_dir=False):
     """ Get the name for a pickle file, from original file + words """
-    pdir = pickle_dir(create=False)
+    pdir = pickle_dir(create_dir)
     bname = os.path.basename(data_file)
     base_name, _ = os.path.splitext(bname)
     pfile = os.path.join(pdir, base_name+f"_words_{num_words}.pkl")
@@ -52,8 +52,14 @@ def parse_arguments(args):
     return vars(parser.parse_args(args))
 
 
-def write_pickle(data_file, num_words=20000, embedding_file):
+def write_pickle(data_file, embedding_file, num_words=20000):
     """ Write a pickle file from the embedding + data file. """
+
+    pickle_fp = pickle_file(data_file, num_words, create_dir=True)
+    if os.path.isfile(pickle_fp):
+        print(f"Pickle file {pickle_fp} already exists, using that.")
+        return pickle_fp
+
     # Load data
     data = pandas.read_csv(data_file)
     texts, y = load_data(data_file)
@@ -67,11 +73,10 @@ def write_pickle(data_file, num_words=20000, embedding_file):
     embedding_matrix = sample_embedding(embedding, word_index)
 
     # Write to pickle file.
-    pickle_dir()
-    pickle_fp = pickle_file(data_file, num_words)
     with open(pickle_fp, 'wb') as f:
         t = (X, y, embedding_matrix, data)
         pickle.dump(t, f)
+    return pickle_fp
 
 
 def main():
