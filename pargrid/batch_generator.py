@@ -104,6 +104,7 @@ fi
 
 BASE_DIR=${cwd}
 cd $BASE_DIR
+cpu-node/bin/activate
 mkdir -p "${TMPDIR}"/${output_dir}
 rm -rf "${TMPDIR}"/results.log
 cp -r $BASE_DIR/pickle "${TMPDIR}"
