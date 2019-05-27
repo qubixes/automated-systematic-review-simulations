@@ -42,10 +42,10 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     keywords='asr automated review batch',
-    packages=find_packages(exclude=['hpc', 'preparation']),
+    packages=find_packages(exclude=['hpc', 'preparation', 'data', 'simulation']),
 
     install_requires=[
-        "pandas", "numpy", "sklearn", "keras",
+        "pandas", "numpy", "sklearn", "keras", "matplotlib", "scipy",
         "asr @ git+https://github.com/msdslab/automated-systematic-review",
         "batchgen @ git+https://github.com/UtrechtUniversity/hpc-batch-gen",
     ],

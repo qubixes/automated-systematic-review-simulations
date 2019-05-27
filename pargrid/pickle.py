@@ -1,3 +1,8 @@
+"""
+Helper scripts to manipulate and create pickle files from embeddings
+and data files. Has both an CLI and API.
+"""
+
 import os
 import pickle
 import argparse
@@ -22,7 +27,8 @@ def pickle_file(data_file, num_words=20000, create_dir=False):
     pdir = pickle_dir(create_dir)
     bname = os.path.basename(data_file)
     base_name, _ = os.path.splitext(bname)
-    pfile = os.path.join(pdir, base_name+f"_words_{num_words}.pkl")
+    suffix = f"_words_{num_words}.pkl"
+    pfile = os.path.join(pdir, base_name+suffix)
     return pfile
 
 
@@ -52,6 +58,10 @@ def parse_arguments(args):
     return vars(parser.parse_args(args))
 
 
+def read_pickle(pickle_file):
+    return pickle.load(pickle_file)
+
+
 def write_pickle(data_file, embedding_file, num_words=20000):
     """ Write a pickle file from the embedding + data file. """
 
@@ -60,8 +70,12 @@ def write_pickle(data_file, embedding_file, num_words=20000):
         print(f"Pickle file {pickle_fp} already exists, using that.")
         return pickle_fp
 
-    # Load data
-    data = pandas.read_csv(data_file)
+#   Load data
+    try:
+        data = pandas.read_csv(data_file)
+    except UnicodeDecodeError:
+        data = pandas.read_csv(data_file, encoding="ISO-8859-1")
+
     texts, y = load_data(data_file)
 
     # Create features and labels

@@ -22,7 +22,7 @@ Dependencies are automatically installed as well.
 
 The simulations in this study are listed on this page:
 
-- [Simulation AL-LSTM ](/sub_analysis_AL_LSTM) - This is a simulation in
+- [Simulation AL-LSTM ](simulations) - This is a simulation in
   which we explore an Active Learning solution, using Long Short-Term Memory
   (LSTM) model. 
 
@@ -51,7 +51,7 @@ batch_from_params(var_param, fix_param, data_file, embedding_file, param_file, c
 
 Pickle files are created in the current working directory/pickle.
 
-To run a simulation, one needs code such as ([see](sub_analysis_AL_LSTM/README.md)):
+To run a simulation, one needs code such as ([see](simulation/README.md)):
 
 ``` python 
 #!/opt/local/bin/python
@@ -85,6 +85,22 @@ batch_from_params(var_param, fix_param,
 
 This creates all the batch files needed in current directory/batch.slurm\_lisa/${job\_name}.
 
+
+## Data visualization
+
+Data visualization is part of this package. An example of this can be found in the simulation directory [see](simulation/analysis_LSTM.py):
+
+``` python
+pickle_file = "pickle/schoot-lgmm-ptsd_words_20000.pkl"
+
+my_analysis = Analysis(pickle_file, json_dirs)
+my_analysis.plot_proba()
+my_analysis.plot_speedup([0, 1, 2, 3], normalize=False)
+my_analysis.plot_inc_found()
+my_analysis.plot_ROC()
+```
+
+which plots several different metrics. See [analysis.py](pargrid/analysis.py) for a more detailed explanation of what each function plots. 
 
 ## Note on pickle files
 
