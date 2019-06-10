@@ -104,7 +104,7 @@ fi
 
 BASE_DIR=${cwd}
 cd $BASE_DIR
-cpu-node/bin/activate
+source cpu-node/bin/activate
 mkdir -p "${TMPDIR}"/${output_dir}
 """
     if config_file is not None:
