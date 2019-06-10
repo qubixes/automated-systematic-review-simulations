@@ -483,22 +483,9 @@ class Analysis(object):
             myplot = plt.errorbar(norm_xr, norm_yr, norm_y_err, color=col)
             legend_name.append(f"{_dir}")
             legend_plt.append(myplot)
-#         print(x_norm, y_norm, dy)
-#         start_inc = cur_pool_roc[0]
-#         start_pool = (len(self._labels)-xr[0])
-#         tot_inc = np.sum(self._labels)
-#         y_random = [start_inc]
-#         for i, x in enumerate(xr[1:]):
-#             y = start_inc + (tot_inc-start_inc)*(x-xr[0])/start_pool
-#             y_random.append(y)
-#         my_plot, = plt.plot(np.array(xr)/x_norm, (np.array(y_random)-dy)/y_norm, color="black", ls="--")
-#         legend_name.append("Random")
-#         legend_plt.append(my_plot)
         plt.legend(legend_plt, legend_name, loc="upper left")
-#         if normalize:
         symb = "%"
-#         else:
-#             symb = "#"
+
         plt.xlabel(f"{symb} Queries")
         plt.ylabel(f"< {symb} Inclusions queried >")
         plt.title("Average number of inclusions found")

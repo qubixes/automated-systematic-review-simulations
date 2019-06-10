@@ -55,7 +55,7 @@ def _args_from_row(row, param_names, data_file, output_dir):
                     param_names)
     param_val_all = " ".join(list(param_val))
     job_str = "'" + data_file + "'" + param_val_all
-    job_str += " --log_file " + "'" + output_dir + "/results" +\
+    job_str += " --log_file " + "\"${TMP_DIR}\"/" + "'" + output_dir + "/results" +\
         str(getattr(row, "T")) + ".log" + "'"
     return job_str
 
@@ -106,9 +106,6 @@ BASE_DIR=${cwd}
 cd $BASE_DIR
 cpu-node/bin/activate
 mkdir -p "${TMPDIR}"/${output_dir}
-rm -rf "${TMPDIR}"/results.log
-cp -r $BASE_DIR/pickle "${TMPDIR}"
-cd "${TMPDIR}"
 """
     if config_file is not None:
         mydef_str += "cp $BASE_DIR/${config_file} ${TMPDIR}\n"
