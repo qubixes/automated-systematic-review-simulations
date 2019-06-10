@@ -55,7 +55,7 @@ def _args_from_row(row, param_names, data_file, output_dir):
                     param_names)
     param_val_all = " ".join(list(param_val))
     job_str = "'" + data_file + "'" + param_val_all
-    job_str += " --log_file " + "\"${TMP_DIR}\"/" + "'" + output_dir + "/results" +\
+    job_str += " --log_file " + "\"${TMPDIR}\"/" + "'" + output_dir + "/results" +\
         str(getattr(row, "T")) + ".log" + "'"
     return job_str
 
