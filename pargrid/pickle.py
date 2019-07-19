@@ -10,9 +10,9 @@ import sys
 
 import pandas
 
-from asr.readers import read_data
-from asr.utils import text_to_features
-from asr.models.embedding import load_embedding, sample_embedding
+from asreview import read_data
+from asreview import text_to_features
+from asreview import load_embedding, sample_embedding
 
 
 def pickle_dir(create=True):
