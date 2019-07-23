@@ -19,7 +19,7 @@ def _create_df_parameter_grid(var_param, n_sample=None):
     grid = ParameterGrid(var_param)
     grid = list(grid)
 
-    Sample the parameter grid and throw the rest away.
+#   Sample the parameter grid and throw the rest away.
     if n_sample is not None:
         random.seed(9238752938)
         grid = random.sample(grid, n_sample)
