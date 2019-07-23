@@ -506,7 +506,7 @@ class Analysis(object):
             final_avail = self._final_labels is not None and _dir in self._final_labels
             if final_avail:
                 inc_found_final = self.get_inc_found(
-                    _dir, pool_name,_inc_queried_merged, final_labels=True)
+                    _dir, pool_name, _inc_queried_merged, final_labels=True)
 #             res_dict[_dir] = self.stat_test_merged(_dir, pool_name,
 #                                                    _inc_queried_all_merged)
             col = "C"+str(i % 10)
