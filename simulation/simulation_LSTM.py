@@ -14,11 +14,6 @@ var_param = {'simulation': range(n_repeat)}
 
 # Fixed parameters that are the same for each run.
 fix_param = {}
-fix_param["query_strategy"] = "rand_max"
-fix_param["n_prior_included"] = 10
-fix_param["n_prior_excluded"] = 10
-fix_param["n_queries"] = 15
-fix_param["n_instances"] = 100
 if len(args):
     fix_param["config_file"] = args[0]
 else:
@@ -26,22 +21,22 @@ else:
 
 data_path = "../data"
 
-data_file = join("ptsd", "schoot-lgmm-ptsd.csv")
-data_fp = None
-if len(args) >= 2:
+if len(args) < 2:
+    data_name = "ptsd"
+else:
     data_name = args[1]
-    if data_name == "ptsd":
-        data_file = join("ptsd", "schoot-lgmm-ptsd.csv")
-    elif data_name == "ptsd_new":
-        data_file = join("ptsd", "raoulduplicates.csv")
-    elif data_name == "statins":
-        data_file = join("cohen", "Statins.csv")
-    elif data_name == "ace":
-        data_file = join("cohen", "ACEInhibitors.csv")
-    elif data_name == "depression":
-        data_file = join("depression", "Depression Cuipers et al. 2018.csv")
-    else:
-        data_fp = args[1]
+
+data_fp = None
+if data_name == "ptsd":
+    data_file = join("ptsd", "PTSD_VandeSchoot_18.csv")
+elif data_name == "statins":
+    data_file = join("cohen", "Statins.csv")
+elif data_name == "ace":
+    data_file = join("cohen", "ACEInhibitors.csv")
+elif data_name == "depression":
+    data_file = join("depression", "Depression Cuipers et al. 2018.csv")
+else:
+    data_fp = args[1]
 
 if data_fp is None:
     data_fp = join(data_path, data_file)
