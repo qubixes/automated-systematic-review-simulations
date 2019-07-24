@@ -19,7 +19,7 @@ def _create_df_parameter_grid(var_param, n_sample=None):
     grid = ParameterGrid(var_param)
     grid = list(grid)
 
-    # Sample the parameter grid and throw the rest away.
+#   Sample the parameter grid and throw the rest away.
     if n_sample is not None:
         random.seed(9238752938)
         grid = random.sample(grid, n_sample)
@@ -71,7 +71,7 @@ def commands_from_csv(data_file, param_file, output_dir="output"):
        config_file: str
        """
     params = pd.read_csv(param_file)
-    base_job = "${python} -m asr simulate "
+    base_job = "${python} -m asreview simulate "
     param_names_all = list(params.columns.values)
     param_names = [p for p in param_names_all if p not in ['T', 'simulation']]
 
