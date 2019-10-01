@@ -5,13 +5,12 @@ Merged versions of functions work on the results of all files at the same time.
 '''
 
 import os
-import re
-import json
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
-from sklearn.metrics import roc_curve, auc
+
+from asreview.simulation.readers import get_num_queries
+from asreview.simulation.readers import read_json_results
+from asreview.simulation.readers import reorder_results
 
 
 class Analysis(object):

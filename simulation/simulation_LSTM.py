@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
+from os.path import splitext, isfile, join
 import sys
 import subprocess
 
-from pargrid import batch_from_params
-from os.path import splitext, isfile, join
+from asreview.simulation.batch_generator import batch_from_params
 
 args = sys.argv[1:]
 n_repeat = 15

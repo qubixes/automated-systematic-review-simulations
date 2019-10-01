@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-from pargrid import Analysis
+from asreview.simulation import Analysis
 
 
 args = sys.argv[1:]

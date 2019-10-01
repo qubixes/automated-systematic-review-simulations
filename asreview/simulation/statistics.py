@@ -1,3 +1,7 @@
+from scipy import stats
+from sklearn.metrics import roc_curve, auc
+
+
 def _split_probabilities(proba, labels):
     """ Split probabilities into the two classes for further processing. """
     class_proba = [[], []]
