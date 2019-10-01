@@ -2,7 +2,7 @@
 # MIT License
 
 # Always prefer setuptools over distutils
-from setuptools import setup, find_packages
+from setuptools import setup, find_namespace_packages
 from os import path
 from io import open
 
@@ -13,13 +13,13 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 # Extract version from cbsodata.py
-for line in open(path.join("asreview.simulation", "__init__.py")):
+for line in open(path.join("asreview", "simulation", "__init__.py")):
     if line.startswith('__version__'):
         exec(line)
         break
 
 setup(
-    name='asreview.simulation',
+    name='asreview-simulation',
     version=__version__,  # noqa
     description='Parameter grid simulation for ASR',
     long_description=long_description,
@@ -42,8 +42,8 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     keywords='asr automated review batch',
-    packages=find_packages(exclude=['hpc', 'preparation', 'data', 'simulation']),
-
+    packages=find_namespace_packages(include=['asreview.*']),
+    namespace_package=["asreview"],
     install_requires=[
         "pandas", "numpy", "sklearn", "keras", "matplotlib", "scipy",
         "asreview",
