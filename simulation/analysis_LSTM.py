@@ -2,7 +2,7 @@
 
 import sys
 from asreview.simulation import Analysis
-
+from asreview.simulation import Plot
 
 args = sys.argv[1:]
 if len(args) > 0:
@@ -10,10 +10,9 @@ if len(args) > 0:
 else:
     json_dirs = ["output"]
 
-for jdir in json_dirs:
-    my_analysis = Analysis.from_dir(jdir)
-    print(my_analysis)
-#     my_analysis.plot_inc_found("inc_res.json")
+
+my_plotter = Plot.from_dirs(json_dirs)
+my_plotter.plot_inc_found()
 
 # my_analysis.plot_proba()
 # my_analysis.plot_speedup([0, 1, 2, 3], normalize=False)

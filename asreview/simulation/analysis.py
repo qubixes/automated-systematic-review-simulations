@@ -4,34 +4,43 @@ Analysis and reading of log files.
 Merged versions of functions work on the results of all files at the same time.
 '''
 
+import itertools
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import stats
 
-from asreview.simulation.readers import get_num_queries
+from asreview.simulation.readers import get_num_reviewed
 from asreview.simulation.readers import read_json_results
 from asreview.simulation.readers import reorder_results
+from asreview.simulation.statistics import _ROC_merged
+from asreview.simulation.statistics import _avg_proba_merged
+from asreview.simulation.statistics import _speedup_merged
+from asreview.simulation.statistics import _limits_merged
+from asreview.simulation.statistics import _find_inclusions
 
 
-class Analysis(object):
+class Analysis():
     """ Analysis object to plot things from the logs. """
 
     def __init__(self, data_dir):
-        self._dirs = []
         self.labels = None
+        self.final_labels = None
         self.empty = True
 
         self.data_dir = data_dir
-        self.dir_key = os.path.basename(os.path.normpath(data_dir))
+        self.key = os.path.basename(os.path.normpath(data_dir))
         self.results = read_json_results(data_dir)
-        if len(self.results) == 0:
+        self.num_runs = len(self.results)
+        if self.num_runs == 0:
             return
 
-        print(self.results)
-        self._first_file = self._results.keys()[0]
-        self._rores = reorder_results(self._results)
-        self._n_queries = get_num_queries(self._results)
-        self.labels = self._results[self._first_file].get('labels', None)
+        self._first_file = list(self.results.keys())[0]
+        self._rores = reorder_results(self.results)
+        self._n_reviewed = get_num_reviewed(self.results)
+        self.labels = self.results[self._first_file].get('labels', None)
+        self.final_labels = self.results[self._first_file].get('final_labels',
+                                                               None)
         self.empty = False
 
     @classmethod
@@ -40,6 +49,50 @@ class Analysis(object):
         if analysis_inst.empty:
             return None
         return analysis_inst
+
+    def get_inc_found(self, final_labels=False):
+
+        if final_labels:
+            labels = self.final_labels
+        else:
+            labels = self.labels
+
+        inclusions_found = []
+#         inclusions_after_init = []
+#         num_initial = []
+        for res in self.results.values():
+            inclusions, inc_after_init, n_initial = _find_inclusions(
+                res["results"], labels)
+            inclusions_found.append(inclusions)
+
+        inc_found_avg = []
+        inc_found_err = []
+        for i_instance in itertools.count():
+            cur_vals = []
+            for i_file in range(self.num_runs):
+                try:
+                    cur_vals.append(inclusions_found[i_file][i_instance])
+                except IndexError:
+                    pass
+            if len(cur_vals) == 0:
+                break
+            if len(cur_vals) == 1:
+                err = cur_vals[0]
+            else:
+                err = stats.sem(cur_vals)
+            avg = np.mean(cur_vals)
+            inc_found_avg.append(avg)
+            inc_found_err.append(err)
+
+        dy = 0
+        dx = 0
+        x_norm = (len(labels)-n_initial)/100
+        y_norm = (inc_after_init)/100
+
+        norm_xr = (np.arange(len(inc_found_avg))-dx)/x_norm
+        norm_yr = (np.array(inc_found_avg)-dy)/y_norm
+        norm_y_err = np.array(inc_found_err)/y_norm
+        return [norm_xr, norm_yr, norm_y_err]
 
     def _avg_time_found(self, _dir):
         results = self._rores[_dir]['labelled']
@@ -99,7 +152,7 @@ class Analysis(object):
         plt.hist(time_hist, density=False)
         plt.show()
 
-    def stat_test_merged(self, _dir, logname, stat_fn, final_labels=False, **kwargs):
+    def stat_test_merged(self, logname, stat_fn, final_labels=False, **kwargs):
         """
         Do a statistical test on the results.
 
@@ -120,12 +173,12 @@ class Analysis(object):
             Results of the statistical test, format depends on stat_fn.
         """
         stat_results = []
-        results = self._rores[_dir][logname]
-#         print(self._results[_dir])
+        print(self._rores)
+        results = self._rores[logname]
         if final_labels and self._final_labels is not None:
-            labels = self._final_labels[_dir]
+            labels = self._final_labels
         else:
-            labels = self._labels[_dir]
+            labels = self._labels
         for query in results:
             new_res = stat_fn(results[query], labels, **kwargs)
             stat_results.append(new_res)
@@ -165,71 +218,6 @@ class Analysis(object):
 
         plt.legend(legend_plt, legend_name, loc="upper right")
         plt.title("Area Under Curve of ROC")
-        plt.show()
-
-    def get_inc_found(self, _dir, *args, final_labels=False, **kwargs):
-        inc_found = self.stat_test_merged(_dir, *args, final_labels=final_labels, **kwargs)
-        cur_inc_found = []
-        cur_inc_found_err = []
-        if final_labels:
-            labels = self._final_labels[_dir]
-        else:
-            labels = self._labels[_dir]
-
-        xr = self._n_queries[_dir]
-        for inc_data in inc_found:
-            cur_inc_found.append(inc_data[0])
-            cur_inc_found_err.append(inc_data[1])
-
-        dy = cur_inc_found[0]
-        dx = self._n_queries[_dir][0]
-        x_norm = (len(labels)-dx)/100
-        y_norm = (np.sum(labels)-dy)/100
-
-        norm_xr = (np.array(xr)-dx)/x_norm
-        norm_yr = (np.array(cur_inc_found)-dy)/y_norm
-        norm_y_err = cur_inc_found_err/y_norm
-        return [norm_xr, norm_yr, norm_y_err]
-
-    def plot_inc_found(self, out_fp=None):
-        """
-        Plot the number of queries that turned out to be included
-        in the final review.
-        """
-        legend_name = []
-        legend_plt = []
-        pool_name = "pool_proba"
-        res_dict = {}
-
-        for i, _dir in enumerate(self._dirs):
-            inc_found = self.get_inc_found(_dir, pool_name,
-                                           _inc_queried_merged)
-            final_avail = self._final_labels is not None and _dir in self._final_labels
-            if final_avail:
-                inc_found_final = self.get_inc_found(
-                    _dir, pool_name, _inc_queried_merged, final_labels=True)
-#             res_dict[_dir] = self.stat_test_merged(_dir, pool_name,
-#                                                    _inc_queried_all_merged)
-            col = "C"+str(i % 10)
-
-            myplot = plt.errorbar(*inc_found, color=col)
-            legend_name.append(f"{_dir}")
-            if final_avail:
-                plt.errorbar(*inc_found_final, color=col, ls="--")
-            legend_plt.append(myplot)
-
-#         print(res_dict)
-#         if out_fp is not None:
-#             with open(out_fp, "w") as f:
-#                 json.dump(res_dict, f)
-
-        plt.legend(legend_plt, legend_name, loc="upper left")
-        symb = "%"
-
-        plt.xlabel(f"{symb} Queries")
-        plt.ylabel(f"< {symb} Inclusions queried >")
-        plt.title("Average number of inclusions found")
-        plt.grid()
         plt.show()
 
     def plot_proba(self):

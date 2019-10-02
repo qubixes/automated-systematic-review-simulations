@@ -1,5 +1,30 @@
+
+import numpy as np
 from scipy import stats
 from sklearn.metrics import roc_curve, auc
+
+
+def _find_inclusions(results, labels, remove_initial=True):
+    inclusions = []
+    n_initial_inc = 0
+    cur_inclusions = 0
+    n_initial = 0
+    for query in results:
+        cursor = 0
+        for new_method in query["label_methods"]:
+            for i in range(cursor, cursor+new_method[1]):
+                idx = query["labelled"][i][0]
+                if new_method[0] == "initial" and remove_initial:
+                    n_initial_inc += labels[idx]
+                    n_initial += 1
+                else:
+                    cur_inclusions += labels[idx]
+                    inclusions.append(cur_inclusions)
+
+    inclusions_after_init = sum(labels)
+    if remove_initial:
+        inclusions_after_init -= n_initial_inc
+    return inclusions, inclusions_after_init, n_initial
 
 
 def _split_probabilities(proba, labels):
@@ -137,7 +162,7 @@ def _inc_queried(proba, labels):
     return num_tot1-num_pool1
 
 
-def _inc_queried_merged(proba, labels):
+def _inc_queried_merged(included, labels):
     """ Merged version of _inc_queried. """
     found = []
     for sub in proba:

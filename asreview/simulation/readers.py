@@ -25,12 +25,10 @@ def read_json_results(data_dir):
         return None
 
     min_queries = int(10**9)
-    print(files)
 
     res_files = []
     for json_file in files:
-        print(json_file)
-        if not re.match(r'^results', json_file):
+        if not re.match(r'^result', json_file):
             continue
 
         res_files.append(json_file)
@@ -76,27 +74,22 @@ def reorder_results(old_results):
         Reordered results.
     """
     results = {}
-    first_file = list(old_results.keys())[0]
-    lognames = old_results[first_file]["0"].keys()
-    queries = old_results[first_file].keys()
-    files = old_results.keys()
 
-    for log in lognames:
-        results[log] = {}
-        for query in queries:
-            try:
-                int(query)
-            except ValueError:
-                continue
-            results[log][query] = []
-            for fp in files:
-                results[log][query].append(old_results[fp][query][log])
+    for fp in old_results:
+        for query_i, query in enumerate(old_results[fp]["results"]):
+            for logname in query:
+                if logname not in results:
+                    results[logname] = []
+                while len(results[logname]) <= query_i:
+                    results[logname].append([])
+
+                results[logname][query_i].append(query[logname])
     return results
 
 
-def get_num_queries(results):
+def get_num_reviewed(results):
     """ Get the number of queries from the non-reordered results. """
-    num_queries = []
+    num_reviewed = []
     for filename in results:
         cur_num = []
         for query in results[filename]:
@@ -112,8 +105,8 @@ def get_num_queries(results):
             else:
                 cur_num.append(d_num + cur_num[-1])
         # Assert that the number of queries is the same for all files.
-        if len(num_queries) == 0:
-            num_queries = cur_num
+        if len(num_reviewed) == 0:
+            num_reviewed = cur_num
         else:
-            assert num_queries == cur_num
-    return num_queries
+            assert num_reviewed == cur_num
+    return num_reviewed
