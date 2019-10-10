@@ -92,21 +92,14 @@ def get_num_reviewed(results):
     num_reviewed = []
     for filename in results:
         cur_num = []
-        for query in results[filename]:
-            # All results are an integer number.
-            try:
-                int(query)
-            except ValueError:
-                continue
+        for query in results[filename]["results"]:
             # Count the number of labeled samples each query.
-            d_num = len(results[filename][query]["labelled"])
+            d_num = len(query["labelled"])
             if len(cur_num) == 0:
                 cur_num.append(d_num)
             else:
                 cur_num.append(d_num + cur_num[-1])
         # Assert that the number of queries is the same for all files.
-        if len(num_reviewed) == 0:
+        if len(num_reviewed) == 0 or len(cur_num) > len(num_reviewed):
             num_reviewed = cur_num
-        else:
-            assert num_reviewed == cur_num
     return num_reviewed

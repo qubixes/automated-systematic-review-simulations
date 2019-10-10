@@ -49,7 +49,7 @@ class Plot():
         avg_times = []
         for analysis in self.analyses.values():
             avg_times.append(list(analysis.avg_time_to_discovery().values()))
-        plt.hist(avg_times, histtype='bar')
+        plt.hist(avg_times, histtype='bar', density=False)
         plt.show()
 
     def plot_inc_found(self):
@@ -71,12 +71,7 @@ class Plot():
 
             box_dist = inc_found[0].max()*0.03
             add_WSS(inc_found_result["WSS95"], ax, col, "WSS@95%", box_dist)
-            add_WSS(inc_found_result["WSS95"], ax, col, "WSS@95%", box_dist)
             add_WSS(inc_found_result["WSS100"], ax, col, "WSS@100%", box_dist)
-#             add_RFF(inc_found_result["RRF10"], ax, col, "RRF@10%", box_dist)
-#             WSS100 = inc_found_result["WSS100"]
-#             plt.plot((WSS95[1], WSS95[1]), (WSS95[1], WSS95[0]+WSS95[1]), color=col)
-#             plt.plot((WSS100[1], WSS100[1]), (WSS100[1], WSS100[0]+WSS100[1]), color=col)
             x_inc = inc_found[0]*100
             y_inc = inc_found[1]*100
             err_inc = inc_found[2]*100
@@ -91,4 +86,21 @@ class Plot():
         plt.ylabel(f"< {symb} Inclusions found >")
         plt.title("Average number of inclusions found")
         plt.grid()
+        plt.show()
+
+    def plot_ROC(self):
+        legend_name = []
+        legend_plt = []
+
+        for i, data_key in enumerate(self.analyses):
+            ROC = self.analyses[data_key].ROC()
+            col = "C"+str(i % 10)
+            xr = self.analyses[data_key]._n_reviewed
+            myplot = plt.errorbar(xr, *ROC["pool"], color=col)
+            plt.errorbar(xr, *ROC["train"], color=col, ls="--")
+            legend_name.append(f"{data_key}")
+            legend_plt.append(myplot)
+
+        plt.legend(legend_plt, legend_name, loc="upper right")
+        plt.title("Area Under Curve of ROC")
         plt.show()

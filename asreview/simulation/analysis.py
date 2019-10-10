@@ -135,10 +135,7 @@ class Analysis():
         return result
 
     def avg_time_to_discovery(self):
-        results = self._rores['labelled']
-        res = {}
         labels = self.labels
-        n_queries = self.num_runs
 
         one_labels = np.where(labels == 1)[0]
         time_results = {label: [] for label in one_labels}
@@ -180,29 +177,6 @@ class Analysis():
                 results[label] = np.average(trained_time)
         return results
 
-
-    def print_avg_time_found(self):
-        time_hist = []
-        for _dir in self._dirs:
-            res_dict = self._avg_time_found(_dir)
-            res = list(res_dict.values())
-            time_hist.append(res)
-            for label in res_dict:
-                if res_dict[label] > 1400:
-                    print(f"{_dir}: label={label}, value={res_dict[label]}")
-#             if time_hist is None:
-#                 time_hist = np.array([res])
-#             else:
-#                 print((time_hist, np.array([res])))
-#                 print(time_hist.shape)
-#                 print(np.array([res]).shape)
-#                 time_hist = np.concatenate((time_hist, np.array([res])))
-#             print(time_hist)
-#             time_hist = np.append(time_hist, np.array([res]), axis=1)
-#         print(time_hist)
-        plt.hist(time_hist, density=False)
-        plt.show()
-
     def stat_test_merged(self, logname, stat_fn, final_labels=False, **kwargs):
         """
         Do a statistical test on the results.
@@ -224,52 +198,42 @@ class Analysis():
             Results of the statistical test, format depends on stat_fn.
         """
         stat_results = []
-        print(self._rores)
+#         print(self._rores)
         results = self._rores[logname]
-        if final_labels and self._final_labels is not None:
-            labels = self._final_labels
+        if final_labels and self.final_labels is not None:
+            labels = self.final_labels
         else:
-            labels = self._labels
+            labels = self.labels
         for query in results:
-            new_res = stat_fn(results[query], labels, **kwargs)
+            new_res = stat_fn(query, labels, **kwargs)
             stat_results.append(new_res)
         return stat_results
 
-    def plot_ROC(self):
+    def ROC(self):
         """
         Plot the ROC for all directories and both the pool and
         the train set.
         """
-        legend_name = []
-        legend_plt = []
-        pool_name = "pool_proba"
-        label_name = "train_proba"
-        for i, _dir in enumerate(self._dirs):
-            pool_roc = self.stat_test_merged(
-                _dir, pool_name, _ROC_merged)
-            label_roc = self.stat_test_merged(
-                _dir, label_name, _ROC_merged)
-            cur_pool_roc = []
-            cur_pool_err = []
-            cur_label_roc = []
-            cur_label_err = []
-            xr = self._n_queries[_dir]
-            for pool_data in pool_roc:
-                cur_pool_roc.append(pool_data[0])
-                cur_pool_err.append(pool_data[1])
-            for label_data in label_roc:
-                cur_label_roc.append(label_data[0])
-                cur_label_err.append(label_data[1])
 
-            col = "C"+str(i % 10)
-            myplot = plt.errorbar(xr, cur_pool_roc, cur_pool_err, color=col)
-            plt.errorbar(xr, cur_label_roc, cur_label_err, color=col, ls="--")
-            legend_name.append(f"{_dir}")
-            legend_plt.append(myplot)
+        pool_roc = self.stat_test_merged("pool_proba", _ROC_merged)
+        label_roc = self.stat_test_merged("train_proba", _ROC_merged)
+        pool_roc_avg = []
+        pool_roc_err = []
+        train_roc_avg = []
+        train_roc_err = []
+        xr = self._n_reviewed
+        for pool_data in pool_roc:
+            pool_roc_avg.append(pool_data[0])
+            pool_roc_err.append(pool_data[1])
+        for label_data in label_roc:
+            train_roc_avg.append(label_data[0])
+            train_roc_err.append(label_data[1])
 
-        plt.legend(legend_plt, legend_name, loc="upper right")
-        plt.title("Area Under Curve of ROC")
-        plt.show()
+        result = {
+            "pool": (pool_roc_avg, pool_roc_err),
+            "train": (train_roc_avg, train_roc_err),
+        }
+        return result
 
     def plot_proba(self):
         """
