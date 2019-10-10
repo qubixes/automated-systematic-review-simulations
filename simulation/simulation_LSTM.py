@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
+import platform
 from os.path import splitext, isfile, join
 import sys
 import subprocess
 
 from asreview.simulation.batch_generator import batch_from_params
+
+machine_cfg_dir = "machine_cfg"
+sim_cfg_dir = "sim_cfg"
 
 args = sys.argv[1:]
 n_repeat = 15
@@ -47,7 +51,11 @@ if not isfile(data_fp):
 
 # Define file names and data sources
 param_file = "params.csv"
-batch_config_file = "slurm_lisa.ini"
+if platform.system() == "Darwin":
+    batch_config_file = "parallel.ini"
+else:
+    batch_config_file = "slurm_lisa.ini"
+batch_config_file = join(machine_cfg_dir, batch_config_file)
 base_embedding_file = "../../cc.en.300.bin"
 
 embedding_file = splitext(data_fp)[0]+".vec"
@@ -62,5 +70,4 @@ if not isfile(embedding_file):
 batch_from_params(var_param, fix_param,
                   data_fp, embedding_file,
                   param_file, batch_config_file,
-                  use_pickle=False,
                   )

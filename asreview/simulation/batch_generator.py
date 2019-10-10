@@ -11,7 +11,6 @@ import numpy as np
 from sklearn.model_selection import ParameterGrid
 
 from batchgen import batch_from_strings
-from pargrid.pickle import write_pickle
 
 
 def _create_df_parameter_grid(var_param, n_sample=None):
@@ -162,20 +161,21 @@ def generate_shell_script(data_file, param_file, config_file, extra_config={}):
 
 
 def batch_from_params(var_param, fix_param, data_file, embedding_file,
-                      param_file, config_file, sample=None, use_pickle=True):
+                      param_file, config_file, sample=None):
     " Create batch files using a pickle file directly. "
 
     extra_config = {}
     if "config_file" in fix_param:
-        base = os.path.splitext(fix_param["config_file"])[0]
+        cfg_base = os.path.basename(fix_param["config_file"])
+        base = os.path.splitext(cfg_base)[0]
         extra_config["job_name"] = "asr_"+base
         extra_config["config_file"] = fix_param["config_file"]
 
     " Create batch files using the original data/embedding files. "
-    if use_pickle:
-        data_file = write_pickle(data_file, embedding_file)
-    else:
-        fix_param["embedding"] = embedding_file
+#     if use_pickle:
+#         data_file = write_pickle(data_file, embedding_file)
+#     else:
+    fix_param["embedding"] = embedding_file
 
     params_to_file(var_param, fix_param, param_file, sample)
     generate_shell_script(data_file, param_file, config_file, extra_config)

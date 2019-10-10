@@ -18,12 +18,16 @@ def _find_inclusions(results, labels, remove_initial=True):
                     n_initial_inc += labels[idx]
                     n_initial += 1
                 else:
+#                     if labels[idx] > 0:
+#                         print(idx)
                     cur_inclusions += labels[idx]
                     inclusions.append(cur_inclusions)
+            cursor += new_method[1]
 
     inclusions_after_init = sum(labels)
     if remove_initial:
         inclusions_after_init -= n_initial_inc
+#     exit()
     return inclusions, inclusions_after_init, n_initial
 
 

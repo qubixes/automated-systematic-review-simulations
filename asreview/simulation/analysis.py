@@ -50,7 +50,8 @@ class Analysis():
             return None
         return analysis_inst
 
-    def get_inc_found(self, final_labels=False):
+    def get_inc_found(self, final_labels=False, WSS_measures=[],
+                      RRF_measures=[]):
 
         if final_labels:
             labels = self.final_labels
@@ -86,13 +87,68 @@ class Analysis():
 
         dy = 0
         dx = 0
-        x_norm = (len(labels)-n_initial)/100
-        y_norm = (inc_after_init)/100
+        x_norm = (len(labels)-n_initial)
+        y_norm = (inc_after_init)
+#         print(inclusions_found[0])
 
         norm_xr = (np.arange(len(inc_found_avg))-dx)/x_norm
         norm_yr = (np.array(inc_found_avg)-dy)/y_norm
         norm_y_err = np.array(inc_found_err)/y_norm
-        return [norm_xr, norm_yr, norm_y_err]
+        if self.num_runs == 1:
+            norm_y_err = np.zeros(len(norm_y_err))
+
+        WSS_RRF_measures = []
+        for i, WSS in enumerate(WSS_measures):
+            WSS = round(WSS)
+            if WSS < 0:
+                WSS = 0
+            if WSS > 100:
+                WSS = 100
+            key = "WSS" + str(WSS)
+            WSS_RRF_measures.append(["WSS", WSS, key, None])
+
+        for i, RRF in enumerate(RRF_measures):
+            RRF = round(RRF)
+            if RRF < 0:
+                RRF = 0
+            if RRF > 100:
+                RRF = 100
+            key = "RRF" + str(RRF)
+            WSS_RRF_measures.append(["RRF", RRF, key, None])
+
+#         RRF10 = None
+#         WSS95 = None
+#         WSS100 = None
+
+        for i in range(len(norm_yr)):
+            for measure in WSS_RRF_measures:
+                if measure[0] == "RRF":
+                    if measure[3] is None and norm_xr[i] >= measure[1]/100-1e-7:
+                        measure[3] = (norm_yr[i], norm_xr[i])
+                elif measure[0] == "WSS":
+                    if measure[3] is None and norm_yr[i] >= measure[1]/100-1e-7:
+                        measure[3] = (norm_yr[i] - norm_xr[i], norm_xr[i])
+                else:
+                    raise ValueError("Measure type unknown.")
+
+#             if WSS95 is None and norm_yr[i] >= 95:
+#                 WSS95 = (norm_yr[i] - norm_xr[i], norm_xr[i])
+#             if WSS100 is None and norm_yr[i] >= 100-1e-7:
+#                 WSS100 = (norm_yr[i] - norm_xr[i], norm_xr[i])
+#             if all(v is not None for v in [RRF10, WSS95, WSS100]):
+#                 break
+
+
+        result = {
+#             "RRF10": RRF10,
+#             "WSS95": WSS95,
+#             "WSS100": WSS100,
+            "data": [norm_xr, norm_yr, norm_y_err],
+        }
+        for measure in WSS_RRF_measures:
+            result[measure[2]] = measure[3]
+#             print(result["data"])
+        return result
 
     def _avg_time_found(self, _dir):
         results = self._rores[_dir]['labelled']
