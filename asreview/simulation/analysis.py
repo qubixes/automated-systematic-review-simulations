@@ -13,7 +13,8 @@ from scipy import stats
 from asreview.simulation.readers import get_num_reviewed
 from asreview.simulation.readers import read_json_results
 from asreview.simulation.readers import reorder_results
-from asreview.simulation.statistics import _ROC_merged
+from asreview.simulation.statistics import _ROC_merged, _get_labeled_order,\
+    _get_proba_order
 from asreview.simulation.statistics import _avg_proba_merged
 from asreview.simulation.statistics import _speedup_merged
 from asreview.simulation.statistics import _limits_merged
@@ -39,6 +40,7 @@ class Analysis():
         self._rores = reorder_results(self.results)
         self._n_reviewed = get_num_reviewed(self.results)
         self.labels = self.results[self._first_file].get('labels', None)
+        self.labels = np.array(self.labels, dtype=np.int)
         self.final_labels = self.results[self._first_file].get('final_labels',
                                                                None)
         self.empty = False
@@ -59,8 +61,7 @@ class Analysis():
             labels = self.labels
 
         inclusions_found = []
-#         inclusions_after_init = []
-#         num_initial = []
+
         for res in self.results.values():
             inclusions, inc_after_init, n_initial = _find_inclusions(
                 res["results"], labels)
@@ -89,7 +90,6 @@ class Analysis():
         dx = 0
         x_norm = (len(labels)-n_initial)
         y_norm = (inc_after_init)
-#         print(inclusions_found[0])
 
         norm_xr = (np.arange(len(inc_found_avg))-dx)/x_norm
         norm_yr = (np.array(inc_found_avg)-dy)/y_norm
@@ -116,10 +116,6 @@ class Analysis():
             key = "RRF" + str(RRF)
             WSS_RRF_measures.append(["RRF", RRF, key, None])
 
-#         RRF10 = None
-#         WSS95 = None
-#         WSS100 = None
-
         for i in range(len(norm_yr)):
             for measure in WSS_RRF_measures:
                 if measure[0] == "RRF":
@@ -131,60 +127,59 @@ class Analysis():
                 else:
                     raise ValueError("Measure type unknown.")
 
-#             if WSS95 is None and norm_yr[i] >= 95:
-#                 WSS95 = (norm_yr[i] - norm_xr[i], norm_xr[i])
-#             if WSS100 is None and norm_yr[i] >= 100-1e-7:
-#                 WSS100 = (norm_yr[i] - norm_xr[i], norm_xr[i])
-#             if all(v is not None for v in [RRF10, WSS95, WSS100]):
-#                 break
-
-
         result = {
-#             "RRF10": RRF10,
-#             "WSS95": WSS95,
-#             "WSS100": WSS100,
             "data": [norm_xr, norm_yr, norm_y_err],
         }
         for measure in WSS_RRF_measures:
             result[measure[2]] = measure[3]
-#             print(result["data"])
         return result
 
-    def _avg_time_found(self, _dir):
-        results = self._rores[_dir]['labelled']
-        time_results = {}
+    def avg_time_to_discovery(self):
+        results = self._rores['labelled']
         res = {}
-        num_query = len(results)
-        n_labels = len(self._labels[_dir])
-        n_queries = len(self._n_queries[_dir])
+        labels = self.labels
+        n_queries = self.num_runs
 
-        for i, query in enumerate(results):
-            n_queried = self._n_queries[_dir][i]
-            n_files = len(results[query])
-            for query_list in results[query]:
-                for label_inc in query_list:
-                    label = label_inc[0]
-                    include = label_inc[1]
-                    if not include:
-                        continue
-                    if label not in time_results:
-                        time_results[label] = [0, 0, 0]
-                    if i == 0:
-                        time_results[label][2] += 1
-                    else:
-                        time_results[label][0] += n_queried
-                        time_results[label][1] += 1
-        penalty_not_found = 2*self._n_queries[_dir][n_queries-1] - self._n_queries[_dir][n_queries-2]
+        one_labels = np.where(labels == 1)[0]
+        time_results = {label: [] for label in one_labels}
+        n_initial = []
+
+        for i_file, result in enumerate(self.results.values()):
+            result = result["results"]
+            label_order, n = _get_labeled_order(result)
+            n_initial.append(n)
+            try:
+                query_i = -1
+                while "pool_proba" not in result[query_i]:
+                    query_i -= 1
+                proba_order = _get_proba_order(result[query_i]["pool_proba"])
+            except IndexError:
+                proba_order = []
+
+            for i_time, idx in enumerate(label_order):
+                if labels[idx] == 1:
+                    time_results[idx].append(i_time)
+
+            for i_time, idx in enumerate(proba_order):
+                if labels[idx] == 1 and len(time_results[idx]) <= i_file:
+                    time_results[idx].append(i_time + len(label_order))
+
+            for idx in time_results:
+                if len(time_results[idx]) < i_file+1:
+                    time_results[idx].append(len(label_order) + len(proba_order))
+
+        results = {}
         for label in time_results:
-            tres = time_results[label]
-            n_not_found = n_files - tres[1] - tres[2]
-#             print(n_not_found, penalty_not_found, n_files, tres[2])
-            if n_files-tres[2]:
-                res[label] = (n_not_found*penalty_not_found + tres[0])/(n_files-tres[2])
+            trained_time = []
+            for i_file, time in enumerate(time_results[label]):
+                if time >= n_initial[i_file]:
+                    trained_time.append(time)
+            if len(trained_time) == 0:
+                results[label] = 0
             else:
-                res[label] = 0
+                results[label] = np.average(trained_time)
+        return results
 
-        return res
 
     def print_avg_time_found(self):
         time_hist = []

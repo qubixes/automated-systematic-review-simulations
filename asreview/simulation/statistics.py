@@ -18,8 +18,6 @@ def _find_inclusions(results, labels, remove_initial=True):
                     n_initial_inc += labels[idx]
                     n_initial += 1
                 else:
-#                     if labels[idx] > 0:
-#                         print(idx)
                     cur_inclusions += labels[idx]
                     inclusions.append(cur_inclusions)
             cursor += new_method[1]
@@ -29,6 +27,27 @@ def _find_inclusions(results, labels, remove_initial=True):
         inclusions_after_init -= n_initial_inc
 #     exit()
     return inclusions, inclusions_after_init, n_initial
+
+
+def _get_labeled_order(results):
+    label_order = []
+    n_initial = 0
+    for query in results:
+        cursor = 0
+        for new_method in query["label_methods"]:
+            for i in range(cursor, cursor+new_method[1]):
+                idx = query["labelled"][i][0]
+                if new_method[0] == "initial":
+                    n_initial += 1
+                label_order.append(idx)
+            cursor += new_method[1]
+    return label_order, n_initial
+
+
+def _get_proba_order(proba):
+    indices = np.array([x[0] for x in proba])
+    probabilities = np.array([x[1] for x in proba])
+    return indices[np.argsort(-probabilities)]
 
 
 def _split_probabilities(proba, labels):

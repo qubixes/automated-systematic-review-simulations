@@ -45,6 +45,13 @@ class Plot():
             return None
         return plot_inst
 
+    def plot_time_to_discovery(self):
+        avg_times = []
+        for analysis in self.analyses.values():
+            avg_times.append(list(analysis.avg_time_to_discovery().values()))
+        plt.hist(avg_times, histtype='bar')
+        plt.show()
+
     def plot_inc_found(self):
         """
         Plot the number of queries that turned out to be included

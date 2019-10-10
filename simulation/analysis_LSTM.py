@@ -12,8 +12,8 @@ else:
 
 
 my_plotter = Plot.from_dirs(json_dirs)
-my_plotter.plot_inc_found()
-
+# my_plotter.plot_inc_found()
+my_plotter.plot_time_to_discovery()
 # my_analysis.plot_proba()
 # my_analysis.plot_speedup([0, 1, 2, 3], normalize=False)
 # my_analysis.plot_ROC()
