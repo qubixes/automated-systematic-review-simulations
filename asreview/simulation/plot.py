@@ -49,7 +49,9 @@ class Plot():
         avg_times = []
         for analysis in self.analyses.values():
             avg_times.append(list(analysis.avg_time_to_discovery().values()))
-        plt.hist(avg_times, 30, histtype='bar', density=False)
+        plt.hist(avg_times, 30, histtype='bar', density=False,
+                 label=self.analyses.keys())
+        plt.legend()
         plt.show()
 
     def plot_inc_found(self):
@@ -95,12 +97,36 @@ class Plot():
         for i, data_key in enumerate(self.analyses):
             ROC = self.analyses[data_key].ROC()
             col = "C"+str(i % 10)
-            xr = self.analyses[data_key]._n_reviewed
-            myplot = plt.errorbar(xr, *ROC["pool"], color=col)
-            plt.errorbar(xr, *ROC["train"], color=col, ls="--")
+#             xr = self.analyses[data_key]._n_reviewed
+            myplot = plt.errorbar(ROC["x_range"], *ROC["pool"], color=col)
+            plt.errorbar(ROC["x_range"], *ROC["train"], color=col, ls="--")
             legend_name.append(f"{data_key}")
             legend_plt.append(myplot)
 
         plt.legend(legend_plt, legend_name, loc="upper right")
         plt.title("Area Under Curve of ROC")
         plt.show()
+
+    def plot_limits(self, prob_allow_miss=[0.1, 1.0, 2.0]):
+        legend_plt = []
+        legend_name = []
+        linestyles = ['-', '--', '-.', ':']
+
+        for i, data_key in enumerate(self.analyses):
+            res = self.analyses[data_key].limits(prob_allow_miss=prob_allow_miss)
+            x_range = res["x_range"]
+            col = "C"+str(i % 10)
+
+            for i_limit, limit in enumerate(res["limits"]):
+                ls = linestyles[i_limit % len(linestyles)]
+                my_plot, = plt.plot(x_range, limit, color=col,
+                                    ls=ls)
+                if i_limit == 0:
+                    legend_plt.append(my_plot)
+                    legend_name.append(f"{data_key}")
+
+        plt.legend(legend_plt, legend_name, loc="upper right")
+        plt.title("Articles left to read.")
+        plt.grid()
+        plt.show()
+

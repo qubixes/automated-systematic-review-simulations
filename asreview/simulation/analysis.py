@@ -7,7 +7,6 @@ Merged versions of functions work on the results of all files at the same time.
 import itertools
 import os
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy import stats
 
 from asreview.simulation.readers import get_num_reviewed
@@ -15,8 +14,6 @@ from asreview.simulation.readers import read_json_results
 from asreview.simulation.readers import reorder_results
 from asreview.simulation.statistics import _ROC_merged, _get_labeled_order,\
     _get_proba_order
-from asreview.simulation.statistics import _avg_proba_merged
-from asreview.simulation.statistics import _speedup_merged
 from asreview.simulation.statistics import _limits_merged
 from asreview.simulation.statistics import _find_inclusions
 
@@ -201,19 +198,23 @@ class Analysis():
             labels = self.final_labels
         else:
             labels = self.labels
-        for query in results:
+
+        x_range = []
+        for i_query, query in enumerate(results):
+            if len(query) == 0:
+                continue
             new_res = stat_fn(query, labels, **kwargs)
             stat_results.append(new_res)
-        return stat_results
+            x_range.append(self._n_reviewed[i_query])
+        return x_range, stat_results
 
     def ROC(self):
         """
         Plot the ROC for all directories and both the pool and
         the train set.
         """
-
-        pool_roc = self.stat_test_merged("pool_proba", _ROC_merged)
-        label_roc = self.stat_test_merged("train_proba", _ROC_merged)
+        _, pool_roc = self.stat_test_merged("pool_proba", _ROC_merged)
+        x_range, label_roc = self.stat_test_merged("train_proba", _ROC_merged)
         pool_roc_avg = []
         pool_roc_err = []
         train_roc_avg = []
@@ -226,125 +227,17 @@ class Analysis():
             train_roc_err.append(label_data[1])
 
         result = {
+            "x_range": x_range,
             "pool": (pool_roc_avg, pool_roc_err),
             "train": (train_roc_avg, train_roc_err),
         }
         return result
 
-    def plot_proba(self):
-        """
-        Plot the average prediction probabilities of samples in the pool
-        and training set.
-        """
-        pool_plt = []
-        pool_leg_name = []
-        label_plt = []
-        label_leg_name = []
-        legend_name = []
-        legend_plt = []
-        pool_name = "pool_proba"
-        label_name = "train_proba"
-        linestyles = ['-', '--', '-.', ':']
-
-        for i, _dir in enumerate(self._dirs):
-            pool_proba = self.stat_test_merged(
-                _dir, pool_name, _avg_proba_merged)
-            label_proba = self.stat_test_merged(
-                _dir, label_name, _avg_proba_merged)
-            col = "C"+str(i % 10)
-            for true_cat in range(2):
-                cur_pool_prob = []
-                cur_pool_err = []
-                cur_label_prob = []
-                cur_label_err = []
-                xr = self._n_queries[_dir]
-                for pool_data in pool_proba:
-                    cur_pool_prob.append(pool_data[true_cat][1])
-                    cur_pool_err.append(pool_data[true_cat][2])
-                for label_data in label_proba:
-                    cur_label_prob.append(label_data[true_cat][1])
-                    cur_label_err.append(label_data[true_cat][2])
-                ls1 = linestyles[true_cat*2]
-                ls2 = linestyles[true_cat*2+1]
-                myplot = plt.errorbar(xr, cur_pool_prob, cur_pool_err,
-                                      color=col, ls=ls1)
-                myplot2 = plt.errorbar(xr, cur_label_prob, cur_label_err,
-                                       color=col, ls=ls2)
-                if i == 0:
-                    pool_plt.append(myplot)
-                    pool_leg_name.append(f"Pool: label = {true_cat}")
-                    label_plt.append(myplot2)
-                    label_leg_name.append(f"Train: label = {true_cat}")
-                if true_cat == 1:
-                    legend_plt.append(myplot)
-
-            legend_name.append(f"{_dir}")
-        legend_name += pool_leg_name
-        legend_name += label_leg_name
-        legend_plt += pool_plt
-        legend_plt += label_plt
-        plt.legend(legend_plt, legend_name, loc="upper right")
-        plt.title("Probability of inclusion")
-        plt.show()
-
-    def plot_speedup(self, n_allow_miss=[0], normalize=False):
-        """
-        Plot the average number of papers that can be discarded safely.
-
-        Arguments
-        ---------
-        n_allow_miss: list[int]
-            A list of the number of allowed False Negatives.
-        normalize: bool
-            Normalize the output with the expected outcome (not correct).
-        """
-        legend_plt = []
-        legend_name = []
-        linestyles = ['-', '--', '-.', ':']
-
-        for i, _dir in enumerate(self._dirs):
-            for i_miss, n_miss in enumerate(n_allow_miss):
-                speed_res = self.stat_test_merged(
-                    _dir, "pool_proba", _speedup_merged,
-                    n_allow_miss=n_miss, normalize=normalize)
-                xr = self._n_queries[_dir]
-                cur_avg = []
-                cur_err = []
-                for sp in speed_res:
-                    cur_avg.append(sp[0])
-                    cur_err.append(sp[1])
-                col = "C"+str(i % 10)
-                my_plot = plt.errorbar(xr, cur_avg, cur_err,
-                                       color=col, capsize=4,
-                                       ls=linestyles[i_miss % len(linestyles)])
-                if n_miss == n_allow_miss[0]:
-                    legend_plt.append(my_plot)
-                    legend_name.append(f"{_dir}")
-
-        plt.legend(legend_plt, legend_name, loc="upper left")
-        plt.title("Articles that do not have to be read.")
-        plt.show()
-
-    def plot_limits(self, prob_allow_miss=[0.1]):
-        legend_plt = []
-        legend_name = []
-        linestyles = ['-', '--', '-.', ':']
-
-        for i, _dir in enumerate(self._dirs):
-            for i_miss, p_miss in enumerate(prob_allow_miss):
-                limits_res = self.stat_test_merged(
-                    _dir, "pool_proba", _limits_merged,
-                    p_allow_miss=p_miss)
-                xr = self._n_queries[_dir]
-                col = "C"+str(i % 10)
-                my_plot, = plt.plot(xr, limits_res, color=col,
-                                    ls=linestyles[i_miss % len(linestyles)])
-                if i_miss == 0:
-                    legend_plt.append(my_plot)
-                    legend_name.append(f"{_dir}")
-
-        plt.legend(legend_plt, legend_name, loc="upper left")
-        plt.title("Articles that do not have to be read.")
-        plt.show()
-
-    
+    def limits(self, prob_allow_miss=[0.1]):
+        results = {"x_range": self._n_reviewed, "limits": []}
+        for p_miss in prob_allow_miss:
+            x_range, limits_res = self.stat_test_merged(
+                "pool_proba", _limits_merged, p_allow_miss=p_miss)
+            results["x_range"] = x_range
+            results["limits"].append(limits_res)
+        return results

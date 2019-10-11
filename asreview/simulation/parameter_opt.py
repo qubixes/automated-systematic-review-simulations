@@ -8,6 +8,7 @@ from distutils.dir_util import copy_tree
 
 from modAL.models import ActiveLearner
 import numpy as np
+from tqdm import tqdm
 
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 from asreview.review.factory import get_reviewer
@@ -210,12 +211,13 @@ def optimize_svm(datasets=["ptsd", "ace", "hall"],
     else:
         n_start_evals = len(trials.trials)
 
-    for _ in range(max_evals):
+    for i in tqdm(range(max_evals)):
         best = fmin(fn=obj_fun,
                     space=param_space,
                     algo=tpe.suggest,
-                    max_evals=max_evals+n_start_evals,
-                    trials=trials)
+                    max_evals=i+n_start_evals+1,
+                    trials=trials,
+                    show_progressbar=False)
         with open(trials_fp, "wb") as fp:
             pickle.dump(trials, fp)
         if trials.best_trial['tid'] == len(trials.trials)-1:
