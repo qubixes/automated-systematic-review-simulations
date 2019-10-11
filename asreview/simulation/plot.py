@@ -49,7 +49,7 @@ class Plot():
         avg_times = []
         for analysis in self.analyses.values():
             avg_times.append(list(analysis.avg_time_to_discovery().values()))
-        plt.hist(avg_times, histtype='bar', density=False)
+        plt.hist(avg_times, 30, histtype='bar', density=False)
         plt.show()
 
     def plot_inc_found(self):

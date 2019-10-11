@@ -4,6 +4,7 @@ from multiprocessing import Process
 import random
 import logging
 import copy
+from distutils.dir_util import copy_tree
 
 from modAL.models import ActiveLearner
 import numpy as np
@@ -20,6 +21,14 @@ from numpy import average
 SVM_KERNELS = ['poly', 'rbf', 'sigmoid', 'linear']
 BALANCE_STRATS = ['simple', 'undersample', 'triple_balance']
 SVM_GAMMA = ['scale', 'auto']
+
+
+def loss_spread(time_results, n_papers, moment=1.0):
+    loss = 0
+    for label in time_results:
+#         print(time_results[label])
+        loss += (time_results[label]/n_papers)**moment
+    return (loss**(1/moment))/len(time_results)
 
 
 def loss_integrated(inc_results):
@@ -130,11 +139,13 @@ def loss_from_dataset(dataname, dataset, params, query_strategy, n_instances, n_
 #         os.remove(log_file)
 #         os.rmdir(log_dir)
     analysis = Analysis.from_dir(log_dir)
-    results = analysis.get_inc_found(WSS_measures=WSS_measures)
-    if len(WSS_measures) > 0:
-        loss = loss_WSS(results)
-    else:
-        loss = loss_integrated(results)
+    results = analysis.avg_time_to_discovery()
+    loss = loss_spread(results, len(analysis.labels), 1.0)
+#     results = analysis.get_inc_found(WSS_measures=WSS_measures)
+#     if len(WSS_measures) > 0:
+#         loss = loss_WSS(results)
+#     else:
+#         loss = loss_integrated(results)
     return loss
 
 
@@ -195,20 +206,25 @@ def optimize_svm(datasets=["ptsd", "ace", "hall"],
 
     if trials is None:
         trials = Trials()
+        n_start_evals = 0
+    else:
+        n_start_evals = len(trials.trials)
 
-    best = fmin(fn=obj_fun,
-                space=param_space,
-                algo=tpe.suggest,
-                max_evals=max_evals,
-                trials=trials)
+    for _ in range(max_evals):
+        best = fmin(fn=obj_fun,
+                    space=param_space,
+                    algo=tpe.suggest,
+                    max_evals=max_evals+n_start_evals,
+                    trials=trials)
+        with open(trials_fp, "wb") as fp:
+            pickle.dump(trials, fp)
+        if trials.best_trial['tid'] == len(trials.trials)-1:
+            copy_tree("temp", "best")
+
     best['kernel'] = SVM_KERNELS[best['kernel']]
     if 'gamma' in best:
         best['gamma'] = SVM_GAMMA[best['gamma']]
     if 'balance_strategy' in best:
         best['balance_strategy'] = BALANCE_STRATS[best['balance_strategy']]
-#     except KeyboardInterrupt:
-#         pass
-    with open(trials_fp, "wb") as fp:
-        pickle.dump(trials, fp)
 
     return best

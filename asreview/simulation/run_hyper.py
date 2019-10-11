@@ -7,7 +7,7 @@ import pickle
 from pandas import DataFrame
 
 
-optimize_svm(trials_fp="trials.pkl", max_evals=160)
+optimize_svm(trials_fp="trials.pkl", max_evals=2)
 
 with open('trials.pkl', 'rb') as f:
     trials = pickle.load(f)

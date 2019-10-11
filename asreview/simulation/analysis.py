@@ -183,8 +183,6 @@ class Analysis():
 
         Arguments
         ---------
-        _dir: str
-            Base directory key (path removed).
         logname: str
             Logname as given in the log file (e.g. "pool_proba").
         stat_fn: func
@@ -198,7 +196,6 @@ class Analysis():
             Results of the statistical test, format depends on stat_fn.
         """
         stat_results = []
-#         print(self._rores)
         results = self._rores[logname]
         if final_labels and self.final_labels is not None:
             labels = self.final_labels
@@ -221,7 +218,6 @@ class Analysis():
         pool_roc_err = []
         train_roc_avg = []
         train_roc_err = []
-        xr = self._n_reviewed
         for pool_data in pool_roc:
             pool_roc_avg.append(pool_data[0])
             pool_roc_err.append(pool_data[1])
