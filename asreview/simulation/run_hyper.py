@@ -1,45 +1,81 @@
 #!/usr/bin/env python
 
+import argparse
+import sys
+
+
+
+
+ABBREVIATIONS = {
+    "triple_balance": "tb",
+    "undersampling": "us",
+    "naive_bayes": "nb",
+}
+
+
+def _parse_arguments():
+    parser = argparse.ArgumentParser(prog=sys.argv[0])
+    parser.add_argument(
+        "-m", "--model",
+        type=str,
+        default="svm",
+        help="Prediction model for active learning."
+    )
+    parser.add_argument(
+        "-b", "--balance_strategy",
+        type=str,
+        default="simple",
+        help="Balance strategy for active learning."
+    )
+    parser.add_argument(
+        "-n", "--n_iter",
+        type=int,
+        default=1,
+        help="Number of iterations of Bayesian Optimization."
+    )
+    return parser
+
+
+parser = _parse_arguments()
+args = vars(parser.parse_args(sys.argv[1:]))
+
+
+model = args["model"]
+balance_strategy = args["balance_strategy"]
+
+short_model = ABBREVIATIONS.get(model, model)
+short_bal = ABBREVIATIONS.get(balance_strategy, balance_strategy)
+trials_fp = f"trials_{model}_{balance_strategy}.pkl"
+
+
 import pandas
 
-from parameter_opt import optimize_svm, SVM_KERNELS, BALANCE_STRATS, SVM_GAMMA
-import pickle
+from parameter_opt import hyper_optimize
 from pandas import DataFrame
 
 
-optimize_svm(trials_fp="trials.pkl", max_evals=10)
+trials, hyper_names = hyper_optimize(trials_fp=trials_fp, **args)
 
-with open('trials.pkl', 'rb') as f:
-    trials = pickle.load(f)
+results = trials.vals
 
-data_dict = dict(
-    kernel=[],
-    svm_C=[],
-    class_weight=[],
-    loss=[],
-    svm_gamma=[],
-    balance_strategy=[],
-)
+final_results = {}
 
-for trial in trials.trials:
-    loss = trial['result']['loss']
-    for var in trial['misc']['vals']:
-        val = trial['misc']['vals'][var][0]
-        if var == 'kernel':
-            val = SVM_KERNELS[val]
-        elif var == 'svm_gamma':
-            val = SVM_GAMMA[val]
-        elif var == 'balance_strategy':
-            val = BALANCE_STRATS[val]
-        data_dict[var].append(val)
-    data_dict["loss"].append(loss)
+for full_name in results:
+    replace_list = hyper_names.get(full_name, None)
+    if replace_list is not None:
+        for i in range(len(results[full_name])):
+            results[full_name][i] = replace_list[results[full_name][i]]
+    if full_name.startswith("mdl_"):
+        new_name = short_model + "_" + full_name[4:]
+    elif full_name.startswith("bal_"):
+        new_name = short_bal + "_" + full_name[4:]
+    elif full_name == "loss":
+        new_name = "loss"
+    else:
+        new_name = "unknownsrc_" + full_name[4:]
+    final_results[new_name] = results[full_name]
 
-
-new_dict = {}
-
-for var in data_dict:
-    if len(data_dict[var]) > 0:
-        new_dict[var] = data_dict[var]
+final_results["loss"] = trials.losses()
 
 pandas.options.display.max_rows = 999
-print(DataFrame(new_dict).sort_values("loss"))
+print(DataFrame(final_results).sort_values("loss"))
