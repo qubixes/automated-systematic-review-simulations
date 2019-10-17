@@ -13,14 +13,12 @@ from tqdm import tqdm
 from hyperopt import fmin, tpe, STATUS_OK, Trials
 from asreview.review.factory import get_reviewer
 from asreview.simulation.analysis import Analysis
-from asreview.models.sklearn_models import SVCModel
 import pickle
 from asreview.readers import ASReviewData
 from numpy import average
 from asreview.balance_strategies.utils import get_balance_class
 from asreview.models.utils import get_model_class
 
-# logging.getLogger().setLevel(logging.DEBUG)
 
 SVM_KERNELS = ['poly', 'rbf', 'sigmoid', 'linear']
 BALANCE_STRATS = ['simple', 'undersample', 'triple_balance']
@@ -78,21 +76,14 @@ def loss_single_WSS(inc_results, WSS_measure):
     return WSS_x
 
 
-def run_model(*args, model_name, balance_strategy, pid=0, model_kwargs={},
-              balance_kwargs={}, **kwargs):
+def run_model(*args, model_name, balance_strategy, pid=0, **kwargs):
     reviewer = get_reviewer(*args, model=model_name,
                             balance_strategy=balance_strategy, **kwargs)
     rand_seed = pid
 
     np.random.seed(rand_seed)
     random.seed(rand_seed)
-    model_class = get_model_class(model_name)
-    reviewer.model = model_class(
-        model_kwargs=model_kwargs, random_state=rand_seed).model()
-    reviewer.balance_strategy, reviewer.balance_kwargs = get_balance_class(
-        method=balance_strategy)(
-        balance_kwargs, fit_kwargs=reviewer.fit_kwargs,
-        query_kwargs=reviewer.query_kwargs).func_kwargs()
+
     logging.debug(f"Balance kwargs: {reviewer.balance_kwargs}")
     reviewer.learner = ActiveLearner(
             estimator=reviewer.model,
@@ -101,11 +92,11 @@ def run_model(*args, model_name, balance_strategy, pid=0, model_kwargs={},
     reviewer.review()
 
 
-def loss_from_dataset(dataname, dataset, model, balance_strategy, params,
+def loss_from_dataset(dataname, dataset, trials_dir, model, balance_strategy, params,
                       query_strategy, n_instances, n_papers,
                       n_runs, included_sets, excluded_sets,
                       **kwargs):
-    log_dir = os.path.join("temp", dataname)
+    log_dir = os.path.join(trials_dir, "current", dataname)
     os.makedirs(log_dir, exist_ok=True)
 
     logging.debug(f"params 2: {params}")
@@ -118,22 +109,23 @@ def loss_from_dataset(dataname, dataset, model, balance_strategy, params,
         **kwargs
     )
 
+    run_kwargs["embedding_fp"] = os.path.splitext(dataset)[0]+".vec"
     logging.debug(f"params 3: {params}")
-    model_kwargs = {}
-    balance_kwargs = {}
+    model_param = {}
+    balance_param = {}
     for par in params:
         if par.startswith("mdl_"):
-            model_kwargs[par[4:]] = params[par]
+            model_param[par[4:]] = params[par]
         elif par.startswith("bal_"):
-            balance_kwargs[par[4:]] = params[par]
+            balance_param[par[4:]] = params[par]
         else:
             run_kwargs[par] = params
 
-    logging.debug(f"Balance 2: {balance_kwargs}")
+    logging.debug(f"Balance 2: {balance_param}")
     run_kwargs["model_name"] = model
     run_kwargs["balance_strategy"] = balance_strategy
-    run_kwargs["model_kwargs"] = model_kwargs
-    run_kwargs["balance_kwargs"] = balance_kwargs
+    run_kwargs["model_param"] = model_param
+    run_kwargs["balance_param"] = balance_param
     procs = []
     for i_run in range(n_runs):
         run_kwargs["log_file"] = os.path.join(
@@ -145,7 +137,7 @@ def loss_from_dataset(dataname, dataset, model, balance_strategy, params,
             target=run_model,
             args=copy.deepcopy(run_args),
             kwargs=copy.deepcopy(run_kwargs),
-            daemon=True,
+            daemon=False,
         )
         procs.append(p)
 
@@ -162,9 +154,10 @@ def loss_from_dataset(dataname, dataset, model, balance_strategy, params,
     return loss
 
 
-def create_objective_func(datasets,
+def create_objective_func(data_dir,
                           model,
                           balance_strategy,
+                          trials_dir,
                           query_strategy="rand_max",
                           n_runs=8, n_included=10, n_excluded=10, n_papers=520,
                           n_instances=50, **kwargs):
@@ -172,8 +165,17 @@ def create_objective_func(datasets,
     files = {}
     excluded_sets = {}
     included_sets = {}
-    for dataset in datasets:
-        files[dataset] = os.path.join("..", "..", "data", "test", dataset+".csv")
+
+    trials_data_dir = os.path.join(trials_dir, "data")
+    copy_tree(data_dir, trials_data_dir)
+
+    for file in os.listdir(trials_data_dir):
+        if not os.path.isfile(os.path.join(trials_data_dir, file)):
+            continue
+        if not (file.endswith(".csv") or file.endswith(".ris")):
+            continue
+        dataset = os.path.splitext(file)[0]
+        files[dataset] = os.path.join(trials_data_dir, file)
         asdata = ASReviewData.from_file(files[dataset])
         ones = np.where(asdata.labels == 1)[0]
         zeros = np.where(asdata.labels == 0)[0]
@@ -191,32 +193,42 @@ def create_objective_func(datasets,
     def objective_func(params):
         loss = []
         logging.debug(params)
-        for dataset in datasets:
+        for dataset in list(files.keys()):
             loss.append(
                 loss_from_dataset(
-                    dataset, files[dataset], model, balance_strategy, params,
+                    dataset, files[dataset], trials_dir, model,
+                    balance_strategy, params,
                     query_strategy, n_instances,
                     n_papers, n_runs, included_sets[dataset],
                     excluded_sets[dataset],
                     **kwargs)
             )
+        logging.debug(f"losses: {loss}")
         return {"loss": average(loss), 'status': STATUS_OK}
     return objective_func
 
 
-def hyper_optimize(datasets=["ptsd", "ace", "hall"],
+def hyper_optimize(datadir="data",
                    model="svm",
                    balance_strategy="simple",
                    n_iter=20,
-                   trials_fp=None):
-    obj_fun = create_objective_func(datasets, model, balance_strategy)
+                   trials_file="trials.pkl",
+                   trials_dir="hyper_optimize",
+                   ):
+    obj_fun = create_objective_func(datadir, model, balance_strategy,
+                                    trials_dir)
 
     model = get_model_class(model)
     balance = get_balance_class(balance_strategy)
     hyper_space, hyper_names = model().hyper_space()
     hyper_space.update(balance().hyperopt_space())
 
+    if len(hyper_space) == 0:
+        print("Hyperparameter space is empty.")
+        exit()
+
     trials = None
+    trials_fp = os.path.join(trials_dir, trials_file)
     if trials_fp is not None:
         try:
             with open(trials_fp, "rb") as fp:
@@ -240,6 +252,7 @@ def hyper_optimize(datasets=["ptsd", "ace", "hall"],
         with open(trials_fp, "wb") as fp:
             pickle.dump(trials, fp)
         if trials.best_trial['tid'] == len(trials.trials)-1:
-            copy_tree("temp", "best")
+            copy_tree(os.path.join(trials_dir, "current"),
+                      os.path.join(trials_dir, "best"))
 
     return trials, hyper_names
