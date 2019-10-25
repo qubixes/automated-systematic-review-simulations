@@ -1,29 +1,33 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 from asreview.simulation.analysis import Analysis
 
 
-def add_WSS(WSS, ax, col, text, box_dist=0.5):
+def _add_WSS(WSS, analysis, ax, col, result_format, box_dist=0.5):
     if WSS is None:
         return
 
-    WSS_A = WSS[0]*100
-    WSS_B = WSS[1]*100
-    text_pos_x = WSS_B + box_dist
-    text_pos_y = (WSS_A + 2*WSS_B)/2
-    plt.plot((WSS_B, WSS_B), (WSS_B, WSS_A+WSS_B), color=col)
+    text = f"WSS@{WSS}%"
+    _, WSS_x, WSS_y = analysis.WSS(WSS, x_format=result_format)
+    text_pos_x = WSS_x[0] + box_dist
+    text_pos_y = (WSS_y[0] + WSS_y[1])/2
+    plt.plot(WSS_x, WSS_y, color=col)
     bbox = dict(boxstyle='round', facecolor=col, alpha=0.5)
     ax.text(text_pos_x, text_pos_y, text, color="white", bbox=bbox)
 
 
-def add_RRF(RRF, ax, col, text, box_dist=0.5):
+def _add_RRF(RRF, analysis, ax, col, result_format, box_dist=0.5):
     if RRF is None:
         return
-    RRF_A = RRF[0]*100
-    RRF_B = RRF[1]*100
-    text_pos_x = RRF_A + box_dist
-    text_pos_y = RRF_B/2
-    plt.plot((RRF_B, RRF_B), (0, RRF_A), color=col)
+
+    text = f"RRF@{RRF}%"
+    _, RRF_x, RRF_y = analysis.RRF(RRF, x_format=result_format)
+
+    print(RRF_x, RRF_y)
+    text_pos_x = RRF_x[0] + box_dist
+    text_pos_y = (RRF_y[0] + RRF_y[1])/2
+    plt.plot(RRF_x, RRF_y, color=col)
     bbox = dict(boxstyle='round', facecolor=col, alpha=0.5)
     ax.text(text_pos_x, text_pos_y, text, color="white", bbox=bbox)
 
@@ -54,7 +58,7 @@ class Plot():
         plt.legend()
         plt.show()
 
-    def plot_inc_found(self):
+    def plot_inc_found(self, result_format="percentage"):
         """
         Plot the number of queries that turned out to be included
         in the final review.
@@ -66,23 +70,28 @@ class Plot():
 
         for i, data_key in enumerate(self.analyses):
             analysis = self.analyses[data_key]
-            inc_found_result = analysis.get_inc_found(WSS_measures=[95, 100],
-                                                      RRF_measures=[10])
-            inc_found = inc_found_result.pop("data")
+            inc_found = analysis.inclusions_found(result_format=result_format)
+            if result_format == "percentage":
+                box_dist = 0.5
+            else:
+                box_dist = 20
             col = "C"+str(i % 10)
+            _add_WSS(95, analysis, ax, col, result_format, box_dist)
+            _add_WSS(100, analysis, ax, col, result_format, box_dist)
+            _add_RRF(10, analysis, ax, col, result_format, box_dist)
 
-            box_dist = inc_found[0].max()*0.03
-            add_WSS(inc_found_result["WSS95"], ax, col, "WSS@95%", box_dist)
-            add_WSS(inc_found_result["WSS100"], ax, col, "WSS@100%", box_dist)
-            x_inc = inc_found[0]*100
-            y_inc = inc_found[1]*100
-            err_inc = inc_found[2]*100
-            myplot = plt.errorbar(x_inc, y_inc, err_inc, color=col)
+            myplot = plt.errorbar(*inc_found, color=col)
             legend_name.append(f"{data_key}")
             legend_plt.append(myplot)
 
-        plt.legend(legend_plt, legend_name, loc="upper left")
-        symb = "%"
+        plt.legend(legend_plt, legend_name, loc="lower right")
+
+        if result_format == "number":
+            symb = "#"
+        elif result_format == "percentage":
+            symb = "%"
+        else:
+            symb = "?"
 
         plt.xlabel(f"{symb} Reviewed")
         plt.ylabel(f"< {symb} Inclusions found >")
@@ -107,7 +116,7 @@ class Plot():
         plt.title("Area Under Curve of ROC")
         plt.show()
 
-    def plot_limits(self, prob_allow_miss=[0.1, 1.0, 2.0]):
+    def plot_limits(self, prob_allow_miss=[0.1, 0.5, 2.0]):
         legend_plt = []
         legend_name = []
         linestyles = ['-', '--', '-.', ':']
@@ -119,12 +128,13 @@ class Plot():
 
             for i_limit, limit in enumerate(res["limits"]):
                 ls = linestyles[i_limit % len(linestyles)]
-                my_plot, = plt.plot(x_range, limit, color=col,
+                my_plot, = plt.plot(x_range, np.array(limit)+np.array(x_range), color=col,
                                     ls=ls)
                 if i_limit == 0:
                     legend_plt.append(my_plot)
                     legend_name.append(f"{data_key}")
 
+        plt.plot(x_range, x_range, color="black", ls='--')
         plt.legend(legend_plt, legend_name, loc="upper right")
         plt.title("Articles left to read.")
         plt.grid()

@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 import os
 import sys
 
+
+# logging.getLogger().setLevel(logging.DEBUG)
 
 ABBREVIATIONS = {
     "triple_balance": "tb",

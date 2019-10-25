@@ -50,12 +50,12 @@ def _args_from_row(row, param_names, data_file, output_dir):
     """ From the row of the parameter data frame,
         create the command line arguments.
     """
-    param_val = map(lambda p: ' --' + p + ' ' + "'" + str(getattr(row, p)) + "'",
-                    param_names)
+    param_val = map(lambda p: ' --' + p + ' ' + "'" + str(getattr(row, p)) +
+                    "'", param_names)
     param_val_all = " ".join(list(param_val))
     job_str = "'" + data_file + "'" + param_val_all
-    job_str += " --log_file " + "\"${TMPDIR}\"/" + "'" + output_dir + "/results" +\
-        str(getattr(row, "T")) + ".log" + "'"
+    job_str += " --log_file " + "\"${TMPDIR}\"/" + "'" + output_dir\
+        + "/results" + str(getattr(row, "T")) + ".log" + "'"
     return job_str
 
 
@@ -179,4 +179,3 @@ def batch_from_params(var_param, fix_param, data_file, embedding_file,
 
     params_to_file(var_param, fix_param, param_file, sample)
     generate_shell_script(data_file, param_file, config_file, extra_config)
-

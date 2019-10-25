@@ -1,5 +1,4 @@
 import os
-import tempfile
 from multiprocessing import Process
 import random
 import logging
@@ -92,8 +91,8 @@ def run_model(*args, model_name, balance_strategy, pid=0, **kwargs):
     reviewer.review()
 
 
-def loss_from_dataset(dataname, dataset, trials_dir, model, balance_strategy, params,
-                      query_strategy, n_instances, n_papers,
+def loss_from_dataset(dataname, dataset, trials_dir, model, balance_strategy,
+                      params, query_strategy, n_instances, n_papers,
                       n_runs, included_sets, excluded_sets,
                       **kwargs):
     log_dir = os.path.join(trials_dir, "current", dataname)

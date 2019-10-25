@@ -41,6 +41,7 @@ class Analysis():
         self.final_labels = self.results[self._first_file].get('final_labels',
                                                                None)
         self.empty = False
+        self.inc_found = {}
 
     @classmethod
     def from_dir(cls, data_dir):
@@ -49,14 +50,40 @@ class Analysis():
             return None
         return analysis_inst
 
-    def get_inc_found(self, final_labels=False, WSS_measures=[],
-                      RRF_measures=[]):
-
+    def inclusions_found(self, result_format="fraction", final_labels=False,
+                         **kwargs):
         if final_labels:
             labels = self.final_labels
         else:
             labels = self.labels
 
+        fl = final_labels
+        if fl not in self.inc_found:
+            self.inc_found[fl] = {}
+            avg, err, iai, ninit = self.get_inc_found(**kwargs, labels=labels)
+            self.inc_found[fl]["avg"] = avg
+            self.inc_found[fl]["err"] = err
+            self.inc_found[fl]["inc_after_init"] = iai
+            self.inc_found[fl]["n_initial"] = ninit
+        dx = 0
+        dy = 0
+        x_norm = len(labels)-self.inc_found[fl]["n_initial"]
+        y_norm = self.inc_found[fl]["inc_after_init"]
+
+        if result_format == "percentage":
+            x_norm /= 100
+            y_norm /= 100
+        elif result_format == "number":
+            x_norm /= len(labels)
+            y_norm /= self.inc_found[fl]["inc_after_init"]
+
+        norm_xr = (np.arange(len(self.inc_found[fl]["avg"]))-dx)/x_norm
+        norm_yr = (np.array(self.inc_found[fl]["avg"])-dy)/y_norm
+        norm_y_err = np.array(self.inc_found[fl]["err"])/y_norm
+
+        return norm_xr, norm_yr, norm_y_err
+
+    def get_inc_found(self, labels=False):
         inclusions_found = []
 
         for res in self.results.values():
@@ -83,53 +110,50 @@ class Analysis():
             inc_found_avg.append(avg)
             inc_found_err.append(err)
 
-        dy = 0
-        dx = 0
-        x_norm = (len(labels)-n_initial)
-        y_norm = (inc_after_init)
-
-        norm_xr = (np.arange(len(inc_found_avg))-dx)/x_norm
-        norm_yr = (np.array(inc_found_avg)-dy)/y_norm
-        norm_y_err = np.array(inc_found_err)/y_norm
         if self.num_runs == 1:
-            norm_y_err = np.zeros(len(norm_y_err))
+            inc_found_err = np.zeros(len(inc_found_err))
 
-        WSS_RRF_measures = []
-        for i, WSS in enumerate(WSS_measures):
-            WSS = round(WSS)
-            if WSS < 0:
-                WSS = 0
-            if WSS > 100:
-                WSS = 100
-            key = "WSS" + str(WSS)
-            WSS_RRF_measures.append(["WSS", WSS, key, None])
+        return inc_found_avg, inc_found_err, inc_after_init, n_initial
 
-        for i, RRF in enumerate(RRF_measures):
-            RRF = round(RRF)
-            if RRF < 0:
-                RRF = 0
-            if RRF > 100:
-                RRF = 100
-            key = "RRF" + str(RRF)
-            WSS_RRF_measures.append(["RRF", RRF, key, None])
+    def WSS(self, val=100, x_format="percentage", **kwargs):
+        norm_xr, norm_yr, _ = self.inclusions_found(
+            result_format="percentage", **kwargs)
+
+        if x_format == "number":
+            x_return, y_result, _ = self.inclusions_found(
+                result_format="number", **kwargs)
+            y_max = self.inc_found[False]["inc_after_init"]
+            y_coef = y_max/(len(self.labels)-self.inc_found[False]["n_initial"])
+        else:
+            x_return = norm_xr
+            y_result = norm_yr
+            y_max = 1.0
+            y_coef = 1.0
 
         for i in range(len(norm_yr)):
-            for measure in WSS_RRF_measures:
-                if measure[0] == "RRF":
-                    if measure[3] is None and norm_xr[i] >= measure[1]/100-1e-7:
-                        measure[3] = (norm_yr[i], norm_xr[i])
-                elif measure[0] == "WSS":
-                    if measure[3] is None and norm_yr[i] >= measure[1]/100-1e-7:
-                        measure[3] = (norm_yr[i] - norm_xr[i], norm_xr[i])
-                else:
-                    raise ValueError("Measure type unknown.")
+            if norm_yr[i] >= val - 1e-6:
+                return (norm_yr[i] - norm_xr[i],
+                        (x_return[i], x_return[i]),
+                        (x_return[i]*y_coef, y_result[i]))
+        return None
 
-        result = {
-            "data": [norm_xr, norm_yr, norm_y_err],
-        }
-        for measure in WSS_RRF_measures:
-            result[measure[2]] = measure[3]
-        return result
+    def RRF(self, val=10, x_format="percentage", **kwargs):
+        norm_xr, norm_yr, _ = self.inclusions_found(
+            result_format="percentage", **kwargs)
+
+        if x_format == "number":
+            x_return, y_return, _ = self.inclusions_found(
+                result_format="number", **kwargs)
+        else:
+            x_return = norm_xr
+            y_return = norm_yr
+
+        for i in range(len(norm_yr)):
+            if norm_xr[i] >= val - 1e-6:
+                return (norm_yr[i],
+                        (x_return[i], x_return[i]),
+                        (0, y_return[i]))
+        return None
 
     def avg_time_to_discovery(self):
         labels = self.labels

@@ -23,7 +23,7 @@ if len(args):
 else:
     fix_param["config_file"] = "sim_settings.ini"
 
-data_path = "../data"
+data_path = "../hyperopt/data"
 
 if len(args) < 2:
     data_name = "ptsd"
@@ -31,14 +31,8 @@ else:
     data_name = args[1]
 
 data_fp = None
-if data_name == "ptsd":
-    data_file = join("ptsd", "PTSD_VandeSchoot_18.csv")
-elif data_name == "statins":
-    data_file = join("cohen", "Statins.csv")
-elif data_name == "ace":
-    data_file = join("cohen", "ACEInhibitors.csv")
-elif data_name == "depression":
-    data_file = join("depression", "Depression Cuipers et al. 2018.csv")
+if data_name in ["ptsd", "hall", "ace"]:
+    data_file = data_name + ".csv"
 else:
     data_fp = args[1]
 
