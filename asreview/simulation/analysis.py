@@ -10,9 +10,8 @@ import numpy as np
 from scipy import stats
 
 from asreview.simulation.readers import get_loggers
-from asreview.simulation.statistics import _ROC_merged, _get_labeled_order,\
-    _get_limits
-from asreview.simulation.statistics import _limits_merged
+from asreview.simulation.statistics import _get_labeled_order
+from asreview.simulation.statistics import _get_limits
 from asreview.simulation.statistics import _find_inclusions
 from asreview.simulation.statistics import _get_last_proba_order
 
@@ -33,9 +32,7 @@ class Analysis():
             return
 
         self._first_file = list(self.loggers.keys())[0]
-#         self._n_reviewed = get_num_reviewed(self.results)
         self.labels = self.loggers[self._first_file].get('labels')
-#         self.labels = np.array(self.labels, dtype=np.int)
         self.final_labels = self.loggers[self._first_file].get('final_labels')
         self.empty = False
         self.inc_found = {}
@@ -120,7 +117,8 @@ class Analysis():
             x_return, y_result, _ = self.inclusions_found(
                 result_format="number", **kwargs)
             y_max = self.inc_found[False]["inc_after_init"]
-            y_coef = y_max/(len(self.labels)-self.inc_found[False]["n_initial"])
+            y_coef = y_max/(len(self.labels) -
+                            self.inc_found[False]["n_initial"])
         else:
             x_return = norm_xr
             y_result = norm_yr
@@ -174,7 +172,8 @@ class Analysis():
 
             for idx in time_results:
                 if len(time_results[idx]) <= i_file:
-                    time_results[idx].append(len(label_order) + len(proba_order))
+                    time_results[idx].append(
+                        len(label_order) + len(proba_order))
 
         results = {}
         for label in time_results:
@@ -187,65 +186,6 @@ class Analysis():
             else:
                 results[label] = np.average(trained_time)
         return results
-
-    def stat_test_merged(self, logname, stat_fn, final_labels=False, **kwargs):
-        """
-        Do a statistical test on the results.
-
-        Arguments
-        ---------
-        logname: str
-            Logname as given in the log file (e.g. "pool_proba").
-        stat_fn: func
-            Function to gather statistics, use merged_* version.
-        kwargs: dict
-            Extra keywords for the stat_fn function.
-
-        Returns
-        -------
-        list:
-            Results of the statistical test, format depends on stat_fn.
-        """
-        stat_results = []
-        results = self._rores[logname]
-        if final_labels and self.final_labels is not None:
-            labels = self.final_labels
-        else:
-            labels = self.labels
-
-        x_range = []
-        for i_query, query in enumerate(results):
-            if len(query) == 0:
-                continue
-            new_res = stat_fn(query, labels, **kwargs)
-            stat_results.append(new_res)
-            x_range.append(self._n_reviewed[i_query])
-        return x_range, stat_results
-
-    def ROC(self):
-        """
-        Plot the ROC for all directories and both the pool and
-        the train set.
-        """
-        _, pool_roc = self.stat_test_merged("pool_proba", _ROC_merged)
-        x_range, label_roc = self.stat_test_merged("train_proba", _ROC_merged)
-        pool_roc_avg = []
-        pool_roc_err = []
-        train_roc_avg = []
-        train_roc_err = []
-        for pool_data in pool_roc:
-            pool_roc_avg.append(pool_data[0])
-            pool_roc_err.append(pool_data[1])
-        for label_data in label_roc:
-            train_roc_avg.append(label_data[0])
-            train_roc_err.append(label_data[1])
-
-        result = {
-            "x_range": x_range,
-            "pool": (pool_roc_avg, pool_roc_err),
-            "train": (train_roc_avg, train_roc_err),
-        }
-        return result
 
     def limits(self, prob_allow_miss=[0.1]):
         logger = self.loggers[self._first_file]
