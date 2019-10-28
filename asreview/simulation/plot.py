@@ -24,7 +24,6 @@ def _add_RRF(RRF, analysis, ax, col, result_format, box_dist=0.5):
     text = f"RRF@{RRF}%"
     _, RRF_x, RRF_y = analysis.RRF(RRF, x_format=result_format)
 
-    print(RRF_x, RRF_y)
     text_pos_x = RRF_x[0] + box_dist
     text_pos_y = (RRF_y[0] + RRF_y[1])/2
     plt.plot(RRF_x, RRF_y, color=col)
@@ -41,6 +40,13 @@ class Plot():
             if new_analysis is not None:
                 data_key = new_analysis.key
                 self.analyses[data_key] = new_analysis
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_, **__):
+        for analysis in self.analyses.values():
+            analysis.close()
 
     @classmethod
     def from_dirs(cls, data_dirs):

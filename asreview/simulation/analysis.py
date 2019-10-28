@@ -9,13 +9,12 @@ import os
 import numpy as np
 from scipy import stats
 
-from asreview.simulation.readers import get_num_reviewed
-from asreview.simulation.readers import read_json_results
-from asreview.simulation.readers import reorder_results
+from asreview.simulation.readers import get_loggers
 from asreview.simulation.statistics import _ROC_merged, _get_labeled_order,\
-    _get_proba_order
+    _get_limits
 from asreview.simulation.statistics import _limits_merged
 from asreview.simulation.statistics import _find_inclusions
+from asreview.simulation.statistics import _get_last_proba_order
 
 
 class Analysis():
@@ -28,18 +27,16 @@ class Analysis():
 
         self.data_dir = data_dir
         self.key = os.path.basename(os.path.normpath(data_dir))
-        self.results = read_json_results(data_dir)
-        self.num_runs = len(self.results)
+        self.loggers = get_loggers(data_dir)
+        self.num_runs = len(self.loggers)
         if self.num_runs == 0:
             return
 
-        self._first_file = list(self.results.keys())[0]
-        self._rores = reorder_results(self.results)
-        self._n_reviewed = get_num_reviewed(self.results)
-        self.labels = self.results[self._first_file].get('labels', None)
-        self.labels = np.array(self.labels, dtype=np.int)
-        self.final_labels = self.results[self._first_file].get('final_labels',
-                                                               None)
+        self._first_file = list(self.loggers.keys())[0]
+#         self._n_reviewed = get_num_reviewed(self.results)
+        self.labels = self.loggers[self._first_file].get('labels')
+#         self.labels = np.array(self.labels, dtype=np.int)
+        self.final_labels = self.loggers[self._first_file].get('final_labels')
         self.empty = False
         self.inc_found = {}
 
@@ -86,9 +83,9 @@ class Analysis():
     def get_inc_found(self, labels=False):
         inclusions_found = []
 
-        for res in self.results.values():
+        for logger in self.loggers.values():
             inclusions, inc_after_init, n_initial = _find_inclusions(
-                res["results"], labels)
+                logger, labels)
             inclusions_found.append(inclusions)
 
         inc_found_avg = []
@@ -162,17 +159,10 @@ class Analysis():
         time_results = {label: [] for label in one_labels}
         n_initial = []
 
-        for i_file, result in enumerate(self.results.values()):
-            result = result["results"]
-            label_order, n = _get_labeled_order(result)
+        for i_file, logger in enumerate(self.loggers.values()):
+            label_order, n = _get_labeled_order(logger)
+            proba_order = _get_last_proba_order(logger)
             n_initial.append(n)
-            try:
-                query_i = -1
-                while "pool_proba" not in result[query_i]:
-                    query_i -= 1
-                proba_order = _get_proba_order(result[query_i]["pool_proba"])
-            except IndexError:
-                proba_order = []
 
             for i_time, idx in enumerate(label_order):
                 if labels[idx] == 1:
@@ -183,7 +173,7 @@ class Analysis():
                     time_results[idx].append(i_time + len(label_order))
 
             for idx in time_results:
-                if len(time_results[idx]) < i_file+1:
+                if len(time_results[idx]) <= i_file:
                     time_results[idx].append(len(label_order) + len(proba_order))
 
         results = {}
@@ -258,10 +248,37 @@ class Analysis():
         return result
 
     def limits(self, prob_allow_miss=[0.1]):
-        results = {"x_range": self._n_reviewed, "limits": []}
-        for p_miss in prob_allow_miss:
-            x_range, limits_res = self.stat_test_merged(
-                "pool_proba", _limits_merged, p_allow_miss=p_miss)
-            results["x_range"] = x_range
-            results["limits"].append(limits_res)
+        logger = self.loggers[self._first_file]
+        n_queries = logger.n_queries()
+        results = {
+            "x_range": [],
+            "limits": [[] for _ in range(len(prob_allow_miss))],
+        }
+
+        n_train = 0
+        for query_i in range(n_queries):
+            new_limits = _get_limits(self.loggers, query_i, self.labels,
+                                     proba_allow_miss=prob_allow_miss)
+
+            try:
+                new_train_idx = logger.get("train_idx", query_i)
+            except KeyError:
+                new_train_idx = None
+
+            if new_train_idx is not None:
+                n_train = len(new_train_idx)
+
+            if new_limits is not None:
+                results["x_range"].append(n_train)
+                for i_prob in range(len(prob_allow_miss)):
+                    results["limits"][i_prob].append(new_limits[i_prob])
+
+        results["x_range"] = np.array(results["x_range"], dtype=np.int)
+        for i_prob in range(len(prob_allow_miss)):
+            results["limits"][i_prob] = np.array(
+                results["limits"][i_prob], np.int)
         return results
+
+    def close(self):
+        for logger in self.loggers.values():
+            logger.close()

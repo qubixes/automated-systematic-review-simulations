@@ -55,7 +55,7 @@ def _args_from_row(row, param_names, data_file, output_dir):
     param_val_all = " ".join(list(param_val))
     job_str = "'" + data_file + "'" + param_val_all
     job_str += " --log_file " + "\"${TMPDIR}\"/" + "'" + output_dir\
-        + "/results" + str(getattr(row, "T")) + ".log" + "'"
+        + "/results" + str(getattr(row, "T")) + ".h5" + "'"
     return job_str
 
 
@@ -91,7 +91,7 @@ def pre_compute_defaults(extra_config):
     str:
         List of lines to execute before computation.
     """
-    # check if results.log is a file or folder
+    # check if results.h5 is a file or folder
     cwd = os.getcwd()
     config_file = extra_config["config_file"]
     output_dir = extra_config["output_dir"]

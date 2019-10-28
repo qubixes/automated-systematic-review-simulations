@@ -9,8 +9,8 @@ if len(args) > 0:
 else:
     json_dirs = ["output"]
 
-my_plotter = Plot.from_dirs(json_dirs)
-my_plotter.plot_inc_found(result_format="percentage")
-my_plotter.plot_time_to_discovery()
+with Plot.from_dirs(json_dirs) as plot:
+#     plot.plot_inc_found(result_format="percentage")
+#     plot.plot_time_to_discovery()
 # my_plotter.plot_ROC()
-my_plotter.plot_limits()
+    plot.plot_limits()

@@ -2,6 +2,25 @@ import json
 import os
 import re
 
+from asreview import Logger
+
+
+def get_loggers(data_dir, prefix="result"):
+    loggers = {}
+    files = os.listdir(data_dir)
+    if not files:
+        print(f"Error: {data_dir} is empty")
+        return None
+
+    for log_file in files:
+        if not log_file.startswith(prefix):
+            continue
+
+        log_fp = os.path.join(data_dir, log_file)
+        loggers[log_file] = Logger.from_file(log_fp, read_only=True).logger
+
+    return loggers
+
 
 def read_json_results(data_dir):
     """
