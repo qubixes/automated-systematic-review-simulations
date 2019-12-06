@@ -33,6 +33,8 @@ else:
 data_fp = None
 if data_name in ["ptsd", "hall", "ace"]:
     data_file = data_name + ".csv"
+elif data_name in ["nagtegaal"]:
+    data_file = data_name + ".xlsx"
 else:
     data_fp = args[1]
 
@@ -63,5 +65,4 @@ if not isfile(embedding_file):
 # Create a batch from the above file names and data sources.
 batch_from_params(var_param, fix_param,
                   data_fp, embedding_file,
-                  param_file, batch_config_file,
-                  )
+                  param_file, batch_config_file)

@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 
 import argparse
-import logging
 import os
 import sys
 
 
-# logging.getLogger().setLevel(logging.DEBUG)
+import logging
+logging.getLogger().setLevel(logging.ERROR)
 
 ABBREVIATIONS = {
     "triple_balance": "tb",
     "undersampling": "us",
     "naive_bayes": "nb",
+    "cluster": "cl",
 }
 
 
@@ -35,17 +36,25 @@ def _parse_arguments():
         default=1,
         help="Number of iterations of Bayesian Optimization."
     )
+    parser.add_argument(
+        "-q", "--query_strategy",
+        type=str,
+        default="cluster",
+        help="Query strategy for active learning."
+    )
     return parser
 
 
-def main(model, balance_strategy, kwargs):
+def main(model, balance_strategy, query_strategy, kwargs):
     import pandas
     from asreview.simulation.parameter_opt import hyper_optimize
     from pandas import DataFrame
 
     short_model = ABBREVIATIONS.get(model, model)
     short_bal = ABBREVIATIONS.get(balance_strategy, balance_strategy)
-    trials_dir = os.path.join("hyper_trials", f"{model}_{balance_strategy}")
+    short_query = ABBREVIATIONS.get(query_strategy, query_strategy)
+    trials_dir = os.path.join("hyper_trials",
+                              f"{model}_{balance_strategy}_{query_strategy}")
 
     trials, hyper_names = hyper_optimize(trials_dir=trials_dir, **kwargs)
 
@@ -62,6 +71,8 @@ def main(model, balance_strategy, kwargs):
             new_name = short_model + "_" + full_name[4:]
         elif full_name.startswith("bal_"):
             new_name = short_bal + "_" + full_name[4:]
+        elif full_name.startswith("qry_"):
+            new_name = short_query + "_" + full_name[4:]
         elif full_name == "loss":
             new_name = "loss"
         else:
@@ -71,6 +82,8 @@ def main(model, balance_strategy, kwargs):
     final_results["loss"] = trials.losses()
 
     pandas.options.display.max_rows = 999
+#     pandas.options.display.max_cols = 120
+    pandas.options.display.width = 0
     print(DataFrame(final_results).sort_values("loss"))
 
 
@@ -81,5 +94,6 @@ if __name__ == "__main__":
 
     model = args["model"]
     balance_strategy = args["balance_strategy"]
+    query_strategy = args["query_strategy"]
 
-    main(model, balance_strategy, args)
+    main(model, balance_strategy, query_strategy, args)
