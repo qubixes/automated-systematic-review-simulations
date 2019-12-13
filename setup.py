@@ -46,6 +46,7 @@ setup(
     namespace_package=["asreview"],
     install_requires=[
         "pandas", "numpy", "sklearn", "keras", "matplotlib", "scipy",
+        "hyperopt", "tqdm",
         "asreview",
         "batchgen @ git+https://github.com/UtrechtUniversity/hpc-batch-gen",
     ],

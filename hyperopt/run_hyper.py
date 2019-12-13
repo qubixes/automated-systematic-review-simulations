@@ -31,16 +31,22 @@ def _parse_arguments():
         help="Balance strategy for active learning."
     )
     parser.add_argument(
+        "-q", "--query_strategy",
+        type=str,
+        default="rand_max",
+        help="Query strategy for active learning."
+    )
+    parser.add_argument(
         "-n", "--n_iter",
         type=int,
         default=1,
         help="Number of iterations of Bayesian Optimization."
     )
     parser.add_argument(
-        "-q", "--query_strategy",
-        type=str,
-        default="cluster",
-        help="Query strategy for active learning."
+        "--mpi",
+        dest='use_mpi',
+        action='store_true',
+        help="Use the mpi implementation.",
     )
     return parser
 
@@ -56,7 +62,17 @@ def main(model, balance_strategy, query_strategy, kwargs):
     trials_dir = os.path.join("hyper_trials",
                               f"{model}_{balance_strategy}_{query_strategy}")
 
-    trials, hyper_names = hyper_optimize(trials_dir=trials_dir, **kwargs)
+    use_mpi = kwargs.pop('use_mpi', False)
+    if use_mpi:
+        from mpi4py import MPI
+        from asreview.simulation.mpiq import mpi_hyper_optimize
+
+        rank = MPI.COMM_WORLD.Get_rank()
+        trials, hyper_names = mpi_hyper_optimize(trials_dir=trials_dir, **kwargs)
+        if rank != 0:
+            return
+    else:
+        trials, hyper_names = hyper_optimize(trials_dir=trials_dir, **kwargs)
 
     results = trials.vals
 

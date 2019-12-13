@@ -6,23 +6,18 @@ import random
 from distutils.dir_util import copy_tree
 from multiprocessing import Process
 
+from hyperopt import fmin, tpe, STATUS_OK, Trials
 from modAL.models import ActiveLearner
 import numpy as np
 from numpy import average
 from tqdm import tqdm
 
-from hyperopt import fmin, tpe, STATUS_OK, Trials
-from asreview.review.factory import get_reviewer
-from asreview.readers import ASReviewData
+from asreview.analysis import Analysis
 from asreview.balance_strategies.utils import get_balance_class
 from asreview.models.utils import get_model_class
-from asreview.analysis import Analysis
 from asreview.query_strategies.utils import get_query_class
-
-
-SVM_KERNELS = ['poly', 'rbf', 'sigmoid', 'linear']
-BALANCE_STRATS = ['simple', 'undersample', 'triple_balance']
-SVM_GAMMA = ['scale', 'auto']
+from asreview.review.factory import get_reviewer
+from asreview.readers import ASReviewData
 
 
 def loss_spread(time_results, n_papers, moment=1.0):
@@ -84,7 +79,6 @@ def run_model(*args, model_name, balance_strategy, pid=0, **kwargs):
     np.random.seed(rand_seed)
     random.seed(rand_seed)
 
-#     logging.debug(f"Balance kwargs: {reviewer.balance_kwargs}")
     reviewer.learner = ActiveLearner(
             estimator=reviewer.model,
             query_strategy=reviewer.query_strategy
@@ -92,10 +86,9 @@ def run_model(*args, model_name, balance_strategy, pid=0, **kwargs):
     reviewer.review()
 
 
-def loss_from_dataset(dataname, dataset, trials_dir, model, balance_strategy,
-                      params, query_strategy, n_instances, n_papers,
-                      n_runs, included_sets, excluded_sets,
-                      **kwargs):
+def compute_args(dataname, dataset, included_sets,
+                 excluded_sets, trials_dir, model, balance_strategy,
+                 query_strategy, params, n_instances, n_papers,  i_run):
     log_dir = os.path.join(trials_dir, "current", dataname)
     os.makedirs(log_dir, exist_ok=True)
 
@@ -106,7 +99,6 @@ def loss_from_dataset(dataname, dataset, trials_dir, model, balance_strategy,
         query_strategy=query_strategy,
         n_instances=n_instances,
         n_papers=n_papers,
-        **kwargs
     )
 
     run_kwargs["embedding_fp"] = os.path.splitext(dataset)[0]+".vec"
@@ -130,16 +122,30 @@ def loss_from_dataset(dataname, dataset, trials_dir, model, balance_strategy,
     run_kwargs["model_param"] = model_param
     run_kwargs["balance_param"] = balance_param
     run_kwargs["query_param"] = query_param
+    run_kwargs["log_file"] = os.path.join(
+        log_dir, f"results_{i_run}.h5")
+    try:
+        os.remove(run_kwargs["log_file"])
+    except FileNotFoundError:
+        pass
+
+    run_kwargs["prior_included"] = included_sets[dataname][i_run]
+    run_kwargs["prior_excluded"] = excluded_sets[dataname][i_run]
+    run_kwargs["pid"] = i_run
+
+    return run_args, run_kwargs, log_dir
+
+
+def loss_from_dataset(dataname, dataset, included_sets, excluded_sets,
+                      trials_dir, model, balance_strategy, params,
+                      query_strategy, n_instances, n_papers, n_runs):
     procs = []
     for i_run in range(n_runs):
-        run_kwargs["log_file"] = os.path.join(
-            log_dir, f"results_{i_run}.h5")
-        try:
-            os.remove(run_kwargs["log_file"])
-        except FileNotFoundError:
-            pass
-        run_kwargs["prior_included"] = included_sets[i_run]
-        run_kwargs["prior_excluded"] = excluded_sets[i_run]
+        run_args, run_kwargs, log_dir = compute_args(
+            dataname, dataset, trials_dir, model, balance_strategy,
+            query_strategy, params, n_instances, n_papers, included_sets,
+            excluded_sets, i_run)
+
         run_kwargs["pid"] = i_run
         p = Process(
             target=run_model,
@@ -162,11 +168,25 @@ def loss_from_dataset(dataname, dataset, trials_dir, model, balance_strategy,
     return loss
 
 
+def simple_loss_aggregation(files, included_sets, excluded_sets, *args, **kwargs):
+    loss = []
+    for dataset in list(files.keys()):
+        loss.append(
+            loss_from_dataset(
+                dataset, files[dataset], included_sets[dataset],
+                excluded_sets[dataset],
+                *args, **kwargs)
+        )
+    logging.debug(f"losses: {loss}")
+    return {"loss": average(loss), 'status': STATUS_OK}
+
+
 def create_objective_func(data_dir,
                           model,
                           balance_strategy,
                           query_strategy,
                           trials_dir,
+                          loss_function=loss_from_dataset,
                           n_runs=8, n_included=1, n_excluded=1, n_papers=1502,
                           n_instances=50, **kwargs):
 
@@ -175,9 +195,14 @@ def create_objective_func(data_dir,
     included_sets = {}
 
     trials_data_dir = os.path.join(trials_dir, "data")
-    copy_tree(data_dir, trials_data_dir)
+    os.makedirs(trials_data_dir, exist_ok=True)
 
-    for file in os.listdir(trials_data_dir):
+    base_files = os.listdir(trials_data_dir)
+    if len(os.listdir(data_dir)) > len(base_files):
+        copy_tree(data_dir, trials_data_dir)
+        base_files = os.listdir(trials_data_dir)
+
+    for file in base_files:
         if not os.path.isfile(os.path.join(trials_data_dir, file)):
             continue
         if not (file.endswith(".csv") or file.endswith(".ris")
@@ -185,7 +210,9 @@ def create_objective_func(data_dir,
             continue
         dataset = os.path.splitext(file)[0]
         files[dataset] = os.path.join(trials_data_dir, file)
-        asdata = ASReviewData.from_file(files[dataset])
+
+    for dataset, data_fp in files.items():
+        asdata = ASReviewData.from_file(data_fp)
         ones = np.where(asdata.labels == 1)[0]
         zeros = np.where(asdata.labels == 0)[0]
 
@@ -200,20 +227,14 @@ def create_objective_func(data_dir,
                 np.random.choice(zeros, n_excluded, replace=False))
 
     def objective_func(params):
-        loss = []
-        logging.debug(params)
-        for dataset in list(files.keys()):
-            loss.append(
-                loss_from_dataset(
-                    dataset, files[dataset], trials_dir, model,
-                    balance_strategy, params,
-                    query_strategy, n_instances,
-                    n_papers, n_runs, included_sets[dataset],
-                    excluded_sets[dataset],
-                    **kwargs)
-            )
-        logging.debug(f"losses: {loss}")
-        return {"loss": average(loss), 'status': STATUS_OK}
+        return loss_function(
+            files, included_sets,
+            excluded_sets, trials_dir, model,
+            balance_strategy, query_strategy, params,
+            n_instances,
+            n_papers, n_runs=n_runs,
+            **kwargs)
+
     return objective_func
 
 
@@ -224,10 +245,11 @@ def hyper_optimize(datadir="data",
                    n_iter=20,
                    trials_file="trials.pkl",
                    trials_dir="hyper_optimize",
+                   loss_function=loss_from_dataset,
                    ):
     obj_fun = create_objective_func(datadir, model, balance_strategy,
                                     query_strategy,
-                                    trials_dir)
+                                    trials_dir, loss_function=loss_function)
 
     model = get_model_class(model)
     balance = get_balance_class(balance_strategy)
