@@ -9,10 +9,13 @@ from numpy import average
 def mpi_worker():
     comm = MPI.COMM_WORLD
     while True:
+        print(f"Job {comm.Get_rank()}: receiving job.")
         data = comm.recv(source=0)
         if data is None:
+            print(f"Job {comm.Get_rank()}: Job queue finished.")
             break
 
+        print(f"Job {comm.Get_rank()}: received job.")
         run_args = data['run_args']
         run_kwargs = data['run_kwargs']
         run_model(*run_args, **run_kwargs)
@@ -37,11 +40,14 @@ def mpi_server(*args, server_job=True, **kwargs):
     n_proc = comm.Get_size()
 
     jobs, log_dirs = create_jobs(*args, **kwargs)
+    print(f"Server: {len(jobs)} jobs, {n_proc} instances.")
     for i_proc in range(1, n_proc):
         try:
             job = jobs.pop()
         except IndexError:
             break
+
+        print(f"Send job to proc {i_proc}")
         comm.send(job, dest=i_proc)
 
     if server_job:

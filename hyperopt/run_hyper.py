@@ -98,7 +98,6 @@ def main(model, balance_strategy, query_strategy, kwargs):
     final_results["loss"] = trials.losses()
 
     pandas.options.display.max_rows = 999
-#     pandas.options.display.max_cols = 120
     pandas.options.display.width = 0
     print(DataFrame(final_results).sort_values("loss"))
 
