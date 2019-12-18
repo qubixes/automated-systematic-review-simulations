@@ -26,7 +26,7 @@ module load eb
 cd {cur_dir}
 source asr-env/bin/activate
 
-./run_hyper.py {args} --n_iter 10000 --mpi
+srun ./run_hyper.py {args} --n_iter 10000 --mpi
 
 date
 
