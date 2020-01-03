@@ -10,6 +10,7 @@ else:
     json_dirs = ["output"]
 
 with Plot.from_dirs(json_dirs) as plot:
+#     plot.plot_time_to_inclusion("../hyperopt/data/depression.json")
     plot.plot_inc_found(result_format="percentage")
     plot.plot_time_to_discovery()
     plot.plot_limits()

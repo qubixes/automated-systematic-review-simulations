@@ -101,7 +101,9 @@ def compute_args(dataname, dataset, included_sets,
         n_papers=n_papers,
     )
 
-    run_kwargs["embedding_fp"] = os.path.splitext(dataset)[0]+".vec"
+#     run_kwargs["embedding_fp"] = os.path.splitext(dataset)[0]+".vec"
+    run_kwargs["embedding_fp"] = os.path.splitext(dataset)[0]+".json"
+
     logging.debug(f"params 3: {params}")
     model_param = {}
     balance_param = {}
@@ -188,7 +190,7 @@ def create_objective_func(data_dir,
                           trials_dir,
                           loss_function=loss_from_dataset,
                           n_runs=8, n_included=1, n_excluded=1, n_papers=1502,
-                          n_instances=150, **kwargs):
+                          n_instances=50, **kwargs):
 
     files = {}
     excluded_sets = {}
