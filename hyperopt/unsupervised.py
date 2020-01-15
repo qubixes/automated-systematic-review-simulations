@@ -12,6 +12,7 @@ import asreview
 from asreview.unsupervised import Doc2Vec, Tfidf
 from asreview.unsupervised.utils import get_unsupervised_class
 from hyperopt import STATUS_OK, Trials, fmin, tpe
+from sklearn.ensemble import RandomForestClassifier
 
 
 def quality(result_list, alpha=1):
@@ -32,14 +33,14 @@ def test_unsupervised(X, y):
     n_train = n_zero_train+n_one_train
 
     results = {}
-    for _ in range(100):
+    for _ in range(10):
         train_one_idx = np.random.choice(
             one_idx, n_one_train, replace=False)
         train_zero_idx = np.random.choice(
             zero_idx, n_zero_train, replace=False)
         train_idx = np.append(train_one_idx, train_zero_idx)
         test_idx = np.delete(np.arange(len(y)), train_idx)
-        model = LogisticRegression()
+        model = RandomForestClassifier()
         model.fit(X[train_idx], y[train_idx])
 
         proba_test = model.predict_proba(X[test_idx])[:, 1]
@@ -87,7 +88,7 @@ if __name__ == "__main__":
     unsupervised_class = get_unsupervised_class(unsupervised_method)
     obj_function = create_objective_func(data_fp, unsupervised_class)
     hyper_space, _ = unsupervised_class().hyper_space()
-    trials_fp = os.path.join("unsupervised", f"trials_{unsupervised_method}.pkl")
+    trials_fp = os.path.join("unsupervised", f"trials_rf_{unsupervised_method}.pkl")
     if trials_fp is not None:
         try:
             with open(trials_fp, "rb") as fp:

@@ -35,8 +35,8 @@ def test_unsupervised(X, y, n_test=5):
     return all_scores
 
 
-def create_objective_func(data_fp, unsupervised_class, n_unsuper_test=2,
-                          n_cluster_test=5, const_param={}):
+def create_objective_func(data_fp, unsupervised_class, n_unsuper_test=3,
+                          n_cluster_test=20, const_param={}):
     _, texts, y = asreview.ASReviewData.from_file(data_fp).get_data()
 
     def objective_func(param):
