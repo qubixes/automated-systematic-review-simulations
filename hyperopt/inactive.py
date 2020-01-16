@@ -15,6 +15,7 @@ from asreview.models.utils import get_model_class
 from asreview.feature_extraction.utils import get_feature_class
 from asreview.balance_strategies.utils import get_balance_class
 import json
+from asreview.simulation.parameter_opt import loss_from_dataset
 
 
 def _parse_arguments():
@@ -72,8 +73,6 @@ def get_trial_fp(datasets, model_name, balance_name, feature_name):
     os.makedirs(trials_dir, exist_ok=True)
     trials_fp = os.path.join(trials_dir, f"trials.pkl")
 
-#     data_name = splitext(basename(data_fp))[0]
-#     trials_dir = os.path.join("inactive", data_name)
     return trials_dir, trials_fp
 
 
@@ -101,6 +100,66 @@ def empty_shared():
         "query_src": {},
         "current_queries": {}
     }
+
+
+def test_inactive2(data, model_class, balance_class, feature_class,
+                   split_param, train_idx, out_fp):
+    model = model_class(**split_param["model_param"])
+    balance_model = balance_class(**split_param["balance_param"])
+    feature_model = feature_class(**split_param["feature_param"])
+    X = feature_model.fit_transform(
+        data["texts"], data["titles"], data["abstracts"])
+    X_train, y_train = balance_model.sample(
+            X, data["labels"], train_idx, empty_shared())
+    model.fit(X_train, y_train)
+    proba = model.predict_proba(X)[:, 1]
+    with open(out_fp, "w") as fp:
+        json.dump(
+            {"proba": proba.tolist(), "train_idx": train_idx.tolist()},
+            fp)
+
+
+def loss_from_files(data_fps, labels_fp):
+    with open(labels_fp, "r") as fp:
+        labels = np.array(json.load(fp), dtype=int)
+    results = {}
+    for data_fp in data_fps:
+        with open(data_fp, "r") as fp:
+            data = json.load(fp)
+        train_idx = np.array(data["train_idx"])
+        proba = np.array(data["proba"])
+        test_idx = np.delete(np.arange(len(labels)), train_idx)
+        proba_test = [
+            (idx, -proba[idx]) for idx in test_idx]
+        proba_test = sorted(proba_test, key=lambda x: x[1])
+        for position, item in enumerate(proba_test):
+            idx = item[0]
+            if labels[idx] == 1:
+                if idx not in results:
+                    results[idx] = [0, 0]
+                results[idx][0] += position
+                results[idx][1] += 1
+
+    result_list = []
+    for key, item in results.items():
+        new_value = item[0]/(item[1]*(len(labels)-len(train_idx)))
+        result_list.append([int(key), new_value])
+
+    result_list = sorted(result_list, key=lambda x: x[1])
+
+    return quality(result_list, 1.0)
+
+
+def compute_train_idx(y):
+    one_idx = np.where(y == 1)[0]
+    zero_idx = np.where(y == 0)[0]
+
+    n_zero_train = round(0.75*len(zero_idx))
+    n_one_train = round(0.75*len(one_idx))
+    train_one_idx = np.random.choice(one_idx, n_one_train, replace=False)
+    train_zero_idx = np.random.choice(zero_idx, n_zero_train, replace=False)
+    train_idx = np.append(train_one_idx, train_zero_idx)
+    return train_idx
 
 
 def test_inactive(model, balance_model, X, y, out_fp, n_run=100):
@@ -150,9 +209,24 @@ def test_inactive(model, balance_model, X, y, out_fp, n_run=100):
     return quality(result_list, 1.0)
 
 
+def create_job(param, data_list, train_idx_list, data_name, i_run,
+               current_dir, **kwargs):
+    job = {
+        "split_param": get_split_param(param),
+        "data": data_list[data_name],
+        "train_idx": train_idx_list[data_name][i_run],
+        "out_fp": join(current_dir, data_name,
+                       f"result_{i_run}.json")
+    }
+    job.update(kwargs)
+    return job
+
+
 def create_objective_func(data_fps, trials_dir, model_class, balance_class,
                           feature_class, n_run=10):
+    current_dir = join(trials_dir, "current")
     data_list = {}
+    train_idx_list = {}
     for data_fp in data_fps:
         data_name = splitext(basename(data_fp))[0]
         as_data = asreview.ASReviewData.from_file(data_fp)
@@ -163,25 +237,44 @@ def create_objective_func(data_fps, trials_dir, model_class, balance_class,
             "titles": as_data.title,
             "abstracts": as_data.abstract,
         }
-    current_dir = join(trials_dir, "current")
-    os.makedirs(current_dir, exist_ok=True)
+
+        train_idx_list[data_name] = []
+        np.random.seed(123987912)
+        for _ in range(n_run):
+            train_idx_list[data_name].append(compute_train_idx(labels))
+
+        os.makedirs(join(current_dir, data_name), exist_ok=True)
 
     assert len(data_list) > 0
 
     def objective_func(param):
-        split_param = get_split_param(param)
-        model = model_class(**split_param["model_param"])
-        balance_model = balance_class(**split_param["balance_param"])
-        feature_model = feature_class(**split_param["feature_param"])
+#         split_param = get_split_param(param)
+#         model = model_class(**split_param["model_param"])
+#         balance_model = balance_class(**split_param["balance_param"])
+#         feature_model = feature_class(**split_param["feature_param"])
 
+#         losses = []
+#         for data_name, data in data_list.items():
+#             out_fp = join(current_dir, data_name+".json")
+#             X = feature_model.fit_transform(
+#                 data["texts"], data["titles"], data["abstracts"])
+#             loss = test_inactive(model, balance_model, X, data["labels"],
+#                                  out_fp, n_run)
+#             losses.append(loss)
         losses = []
-        for data_name, data in data_list.items():
-            out_fp = join(current_dir, data_name+".json")
-            X = feature_model.fit_transform(
-                data["texts"], data["titles"], data["abstracts"])
-            loss = test_inactive(model, balance_model, X, data["labels"],
-                                 out_fp, n_run)
-            losses.append(loss)
+        for data_name in data_list:
+            all_files = []
+            labels_fp = join(current_dir, data_name, "labels.json")
+            with open(labels_fp, "w") as fp:
+                json.dump(data_list[data_name]["labels"].tolist(), fp)
+            for i_run in range(n_run):
+                job = create_job(param, data_list, train_idx_list, data_name,
+                                 i_run, current_dir, model_class=model_class,
+                                 balance_class=balance_class,
+                                 feature_class=feature_class)
+                test_inactive2(**job)
+                all_files.append(job["out_fp"])
+            losses.append(loss_from_files(all_files, labels_fp))
         return {"loss": np.average(losses), 'status': STATUS_OK}
 
     return objective_func

@@ -4,6 +4,8 @@ import pickle
 import sys
 
 import pandas as pd
+import numpy as np
+from copy import deepcopy
 
 
 if __name__ == "__main__":
@@ -14,12 +16,19 @@ if __name__ == "__main__":
     if isinstance(trials, tuple):
         trials, hyper_choices = trials
 
-    values = {key[4:]: value for key, value in trials.vals.items()}
-    hyper_choices = {key[4:]: value for key, value in hyper_choices.items()}
+    values = deepcopy(trials.vals)
     for key in values:
         if key in hyper_choices:
             for i in range(len(values[key])):
                 values[key][i] = hyper_choices[key][values[key][i]]
+
+#     for key in values:
+    short_keys = [key[4:] for key in values]
+    unique, counts = np.unique(short_keys, return_counts=True)
+#     print(dict(zip(unique, counts)))
+    
+#     short_values = {(key[4:] if key[4:]key[4:]: value for key, value in trials.vals.items()}
+#     hyper_choices = {key[4:]: value for key, value in hyper_choices.items()}
 
     values.update({"loss": trials.losses()})
     pd.options.display.max_rows = 999
