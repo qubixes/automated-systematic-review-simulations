@@ -1,5 +1,5 @@
 import os
-from os.path import join, isfile
+from os.path import isfile
 import json
 import pickle
 from distutils.dir_util import copy_tree
@@ -13,123 +13,13 @@ from asreview.readers import ASReviewData
 from asreview.models.utils import get_model_class
 from asreview.feature_extraction.utils import get_feature_class
 from asreview.balance_strategies.utils import get_balance_class
-
-
-def empty_shared():
-    return {
-        "query_src": {},
-        "current_queries": {}
-    }
-
-
-def quality(result_list, alpha=1):
-    q = 0
-    for _, rank in result_list:
-        q += rank**alpha
-
-    return (q/len(result_list))**(1/alpha)
-
-
-def loss_from_files(data_fps, labels_fp):
-    with open(labels_fp, "r") as fp:
-        labels = np.array(json.load(fp), dtype=int)
-    results = {}
-    for data_fp in data_fps:
-        with open(data_fp, "r") as fp:
-            data = json.load(fp)
-        train_idx = np.array(data["train_idx"])
-        proba = np.array(data["proba"])
-        test_idx = np.delete(np.arange(len(labels)), train_idx)
-        proba_test = [
-            (idx, -proba[idx]) for idx in test_idx]
-        proba_test = sorted(proba_test, key=lambda x: x[1])
-        for position, item in enumerate(proba_test):
-            idx = item[0]
-            if labels[idx] == 1:
-                if idx not in results:
-                    results[idx] = [0, 0]
-                results[idx][0] += position
-                results[idx][1] += 1
-
-    result_list = []
-    for key, item in results.items():
-        new_value = item[0]/(item[1]*(len(labels)-len(train_idx)))
-        result_list.append([int(key), new_value])
-
-    result_list = sorted(result_list, key=lambda x: x[1])
-
-    return quality(result_list, 1.0)
-
-
-def get_trial_fp(datasets, model_name, balance_name, feature_name):
-    trials_dir = join("output", "inactive", "_".join(
-        [model_name, balance_name, feature_name]), "_".join(datasets))
-    os.makedirs(trials_dir, exist_ok=True)
-    trials_fp = os.path.join(trials_dir, f"trials.pkl")
-
-    return trials_dir, trials_fp
-
-
-def create_jobs(param, data_names, n_run):
-    jobs = []
-    for data_name in data_names:
-        for i_run in range(n_run):
-            jobs.append({
-                "param": param,
-                "data_name": data_name,
-                "i_run": i_run,
-                })
-    return jobs
-
-
-def compute_train_idx(y, seed):
-    np.random.seed(seed)
-    one_idx = np.where(y == 1)[0]
-    zero_idx = np.where(y == 0)[0]
-
-    n_zero_train = round(0.75*len(zero_idx))
-    n_one_train = round(0.75*len(one_idx))
-    train_one_idx = np.random.choice(one_idx, n_one_train, replace=False)
-    train_zero_idx = np.random.choice(zero_idx, n_zero_train, replace=False)
-    train_idx = np.append(train_one_idx, train_zero_idx)
-    return train_idx
-
-
-def _get_prefix_param(raw_param, prefix):
-    return {key[4:]: value for key, value in raw_param.items()
-            if key[:4] == prefix}
-
-
-def get_split_param(raw_param):
-    return {
-        "model_param": _get_prefix_param(raw_param, "mdl_"),
-        "query_param": _get_prefix_param(raw_param, "qry_"),
-        "balance_param": _get_prefix_param(raw_param, "bal_"),
-        "feature_param": _get_prefix_param(raw_param, "fex_"),
-    }
-
-
-def data_fp_from_name(data_dir, data_name):
-    file_list = os.listdir(data_dir)
-    file_list = [file_name for file_name in file_list
-                 if file_name.endswith((".csv", ".xlsx", ".ris")) and
-                 os.path.splitext(file_name)[0] == data_name]
-    return join(data_dir, file_list[0])
-
-
-def get_out_dir(trials_dir, data_name):
-    out_dir = join(trials_dir, "current", data_name)
-    os.makedirs(out_dir, exist_ok=True)
-    return out_dir
-
-
-def get_out_fp(trials_dir, data_name, i_run):
-    return join(get_out_dir(trials_dir, data_name),
-                f"results_{i_run}.json")
-
-
-def get_label_fp(trials_dir, data_name):
-    return join(get_out_dir(trials_dir, data_name), "labels.json")
+from asreview.simulation.job_utils import get_trial_fp
+from asreview.simulation.job_utils import get_split_param
+from asreview.simulation.job_utils import empty_shared
+from asreview.simulation.job_utils import data_fp_from_name
+from asreview.simulation.job_utils import quality
+from asreview.simulation.job_utils import get_out_fp
+from asreview.simulation.job_utils import get_label_fp
 
 
 class InactiveJobRunner():
@@ -137,7 +27,8 @@ class InactiveJobRunner():
                  executor=serial_executor, n_run=10):
 
         self.trials_dir, self.trials_fp = get_trial_fp(
-            data_names, model_name, balance_name, feature_name)
+            data_names, model_name=model_name, balance_name=balance_name,
+            featurename=feature_name, hyper_type="inactive")
 
         self.model_class = get_model_class(model_name)
         self.feature_class = get_feature_class(feature_name)
@@ -252,3 +143,59 @@ class InactiveJobRunner():
             if trials.best_trial['tid'] == len(trials.trials)-1:
                 copy_tree(os.path.join(self.trials_dir, "current"),
                           os.path.join(self.trials_dir, "best"))
+
+
+def loss_from_files(data_fps, labels_fp):
+    with open(labels_fp, "r") as fp:
+        labels = np.array(json.load(fp), dtype=int)
+    results = {}
+    for data_fp in data_fps:
+        with open(data_fp, "r") as fp:
+            data = json.load(fp)
+        train_idx = np.array(data["train_idx"])
+        proba = np.array(data["proba"])
+        test_idx = np.delete(np.arange(len(labels)), train_idx)
+        proba_test = [
+            (idx, -proba[idx]) for idx in test_idx]
+        proba_test = sorted(proba_test, key=lambda x: x[1])
+        for position, item in enumerate(proba_test):
+            idx = item[0]
+            if labels[idx] == 1:
+                if idx not in results:
+                    results[idx] = [0, 0]
+                results[idx][0] += position
+                results[idx][1] += 1
+
+    result_list = []
+    for key, item in results.items():
+        new_value = item[0]/(item[1]*(len(labels)-len(train_idx)))
+        result_list.append([int(key), new_value])
+
+    result_list = sorted(result_list, key=lambda x: x[1])
+
+    return quality(result_list, 1.0)
+
+
+def create_jobs(param, data_names, n_run):
+    jobs = []
+    for data_name in data_names:
+        for i_run in range(n_run):
+            jobs.append({
+                "param": param,
+                "data_name": data_name,
+                "i_run": i_run,
+                })
+    return jobs
+
+
+def compute_train_idx(y, seed):
+    np.random.seed(seed)
+    one_idx = np.where(y == 1)[0]
+    zero_idx = np.where(y == 0)[0]
+
+    n_zero_train = round(0.75*len(zero_idx))
+    n_one_train = round(0.75*len(one_idx))
+    train_one_idx = np.random.choice(one_idx, n_one_train, replace=False)
+    train_zero_idx = np.random.choice(zero_idx, n_zero_train, replace=False)
+    train_idx = np.append(train_one_idx, train_zero_idx)
+    return train_idx
