@@ -137,7 +137,7 @@ def loss_from_files(data_fps, labels_fp):
             score = normalized_cluster_score(prediction, labels)
             cur_scores.append(score)
         all_scores.append(cur_scores)
-    
+
     return -np.exp(np.average(np.log(all_scores)))
 
 

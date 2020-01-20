@@ -1,5 +1,6 @@
 import os
 from os.path import join, splitext
+import logging
 
 
 def empty_shared():
@@ -50,12 +51,21 @@ def _get_prefix_param(raw_param, prefix):
 
 
 def get_split_param(raw_param):
-    return {
+    split_param = {
         "model_param": _get_prefix_param(raw_param, "mdl_"),
         "query_param": _get_prefix_param(raw_param, "qry_"),
         "balance_param": _get_prefix_param(raw_param, "bal_"),
         "feature_param": _get_prefix_param(raw_param, "fex_"),
     }
+    merge_param = {}
+    for param in split_param.values():
+        merge_param.update(param)
+
+    for param in raw_param:
+        if param[4:] not in merge_param:
+            logging.warning(f"Warning: parameter {param} is being ignored.")
+            print(merge_param)
+    return split_param
 
 
 def data_fp_from_name(data_dir, data_name):
