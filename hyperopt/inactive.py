@@ -52,9 +52,9 @@ def _parse_arguments():
     return parser
 
 
-if __name__ == "__main__":
+def main(argv=sys.argv[1:]):
     parser = _parse_arguments()
-    args = vars(parser.parse_args(sys.argv[1:]))
+    args = vars(parser.parse_args(argv))
     datasets = args["datasets"].split(",")
     model_name = args["model"]
     feature_name = args["feature_extraction"]
@@ -75,3 +75,7 @@ if __name__ == "__main__":
         mpi_hyper_optimize(job_runner, n_iter)
     else:
         serial_hyper_optimize(job_runner, n_iter)
+
+
+if __name__ == "__main__":
+    main()

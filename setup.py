@@ -48,7 +48,6 @@ setup(
         "pandas", "numpy", "sklearn", "keras", "matplotlib", "scipy",
         "hyperopt", "tqdm",
         "asreview",
-        "batchgen @ git+https://github.com/UtrechtUniversity/hpc-batch-gen",
     ],
 
     extras_require={
@@ -63,6 +62,15 @@ setup(
 #         'console_scripts': [
 #             'pickle_asr=pargrid.pickle:main'],
 #     },
+
+    entry_points={
+        "asreview.entry_points": [
+            "plot = asreview.simulation.plot_entry:PlotEntryPoint",
+            "hyper-active = asreview.simulation.active_learning:HyperActiveEntryPoint",
+            "hyper-inactive = asreview.simulation.inactive:HyperInactiveEntryPoint",  # noqa
+            "hyper-cluster = asreview.simulation.cluster:HyperClusterEntryPoint",  #noqa
+        ]
+    },
 
     project_urls={
         'Bug Reports':

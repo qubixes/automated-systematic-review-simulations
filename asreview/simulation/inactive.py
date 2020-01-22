@@ -9,7 +9,14 @@ from asreview.simulation.serial_executor import serial_executor
 from asreview.simulation.serial_executor import serial_hyper_optimize
 from asreview.simulation.inactive_job import InactiveJobRunner
 from asreview.simulation.job_utils import get_data_names
-from asreview.simulation.al_job import ActiveLearnJobRunner
+from asreview.entry_points.base import BaseEntryPoint
+
+
+class HyperInactiveEntryPoint(BaseEntryPoint):
+    description = "Hyper parameter optimization for non-active learning."
+
+    def execute(self, argv):
+        main(argv)
 
 
 def _parse_arguments():
@@ -17,14 +24,8 @@ def _parse_arguments():
     parser.add_argument(
         "-m", "--model",
         type=str,
-        default="nb",
+        default="dense_nn",
         help="Prediction model for active learning."
-    )
-    parser.add_argument(
-        "-q", "--query_strategy",
-        type=str,
-        default="max_random",
-        help="Query strategy for active learning."
     )
     parser.add_argument(
         "-b", "--balance_strategy",
@@ -35,7 +36,7 @@ def _parse_arguments():
     parser.add_argument(
         "-e", "--feature_extraction",
         type=str,
-        default="tfidf",
+        default="doc2vec",
         help="Feature extraction method.")
     parser.add_argument(
         "-n", "--n_iter",
@@ -66,7 +67,6 @@ def main(argv=sys.argv[1:]):
     model_name = args["model"]
     feature_name = args["feature_extraction"]
     balance_name = args["balance_strategy"]
-    query_name = args["query_strategy"]
     n_iter = args["n_iter"]
     use_mpi = args["use_mpi"]
 
@@ -76,10 +76,8 @@ def main(argv=sys.argv[1:]):
     else:
         executor = serial_executor
 
-    job_runner = ActiveLearnJobRunner(
-        data_names, model_name=model_name, query_name=query_name,
-        balance_name=balance_name, feature_name=feature_name,
-        executor=executor)
+    job_runner = InactiveJobRunner(data_names, model_name, balance_name,
+                                   feature_name, executor=executor)
 
     if use_mpi:
         mpi_hyper_optimize(job_runner, n_iter)

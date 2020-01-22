@@ -7,9 +7,16 @@ import argparse
 from asreview.simulation.mpi_executor import mpi_executor, mpi_hyper_optimize
 from asreview.simulation.serial_executor import serial_executor
 from asreview.simulation.serial_executor import serial_hyper_optimize
-from asreview.simulation.inactive_job import InactiveJobRunner
 from asreview.simulation.job_utils import get_data_names
 from asreview.simulation.al_job import ActiveLearnJobRunner
+from asreview.entry_points.base import BaseEntryPoint
+
+
+class HyperActiveEntryPoint(BaseEntryPoint):
+    description = "Hyper parameter optimization for active learning."
+
+    def execute(self, argv):
+        main(argv)
 
 
 def _parse_arguments():
