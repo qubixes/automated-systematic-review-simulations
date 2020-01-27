@@ -6,14 +6,13 @@ import subprocess
 import sys
 
 
-from run_hyper import _parse_arguments
 import shlex
 
 
 BATCH_TEMPLATE = """\
 #!/bin/bash
 
-#SBATCH -t 120:00:00
+#SBATCH -t {time}
 #SBATCH --tasks-per-node {tasks_per_node}
 #SBATCH -N {num_nodes}
 #SBATCH -J hyper_{hyper_name}
@@ -34,13 +33,30 @@ date
 
 
 def main(cli_args):
-    parser = _parse_arguments()
-    args = vars(parser.parse_args(cli_args))
-    cur_dir = os.getcwd()
-    hyper_name = "_".join(map(str, args.values()))
-    batch_file = os.path.join("hpc_logs", hyper_name + ".sh")
+    mode = cli_args[0]
+    if mode == "hyper-cluster":
+        from asreviewcontrib.hyperopt.cluster import _parse_arguments  # noqa
+    elif mode == "hyper-active":
+        from asreviewcontrib.hyperopt.active_learning import _parse_arguments  # noqa
+    elif mode == "hyper-inactive":
+        from asreviewcontrib.hyperopt.inactive import _parse_arguments  #noqa
+    else:
+        print("Error: need one of the following modes: ['hyper-cluster',"
+              "'hyper-active', 'hyper-inactive'")
+        sys.exit(192)
 
-    if args['model'].startswith('lstm'):
+    parser = _parse_arguments()
+    parser.add_argument("-t", "--time",
+                        type=str, default="120:00:00",
+                        help="Maximum clock wall time for the optimization"
+                        " to run.")
+    args = vars(parser.parse_args(cli_args[1:]))
+    cur_dir = os.getcwd()
+    time = args.pop("time")
+    hyper_name = "_".join(map(str, args.values()))
+    batch_file = os.path.join("hpc_batch_files", hyper_name + ".sh")
+
+    if 'model' in args and args['model'].startswith('lstm'):
         tasks_per_node = 4
         num_nodes = 5
     else:
@@ -48,7 +64,8 @@ def main(cli_args):
         num_nodes = 1
     batch_str = BATCH_TEMPLATE.format(
         hyper_name=hyper_name, tasks_per_node=tasks_per_node,
-        num_nodes=num_nodes, args=" ".join(cli_args), cur_dir=cur_dir)
+        num_nodes=num_nodes, args=" ".join(cli_args), cur_dir=cur_dir,
+        time=time)
 
     os.makedirs("hpc_logs", exist_ok=True)
     with open(batch_file, "w") as fp:
