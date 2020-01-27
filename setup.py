@@ -65,7 +65,6 @@ setup(
 
     entry_points={
         "asreview.entry_points": [
-            "plot = asreview.simulation.plot_entry:PlotEntryPoint",
             "hyper-active = asreview.simulation.active_learning:HyperActiveEntryPoint",
             "hyper-inactive = asreview.simulation.inactive:HyperInactiveEntryPoint",  # noqa
             "hyper-cluster = asreview.simulation.cluster:HyperClusterEntryPoint",  #noqa
