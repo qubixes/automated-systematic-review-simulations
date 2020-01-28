@@ -1,24 +1,21 @@
 #!/usr/bin/env python
 
-import nltk
-# import re
 import numpy as np
 import os
 from os.path import splitext
 import sys
-# import pandas as pd
-# import sys
-# from pprint import pprint
+import logging
+import warnings
+
+import nltk
 import gensim
 import gensim.corpora as corpora
 from gensim.utils import simple_preprocess
 from gensim.models import CoherenceModel
-# import spacy
 from nltk.corpus import stopwords
-import logging
-import warnings
+
 import asreview
-from cluster import normalized_cluster_score
+from asreview.cluster import normalized_cluster_score
 
 
 def compute_coherence(model, data_lemmatized, id2word):
@@ -35,7 +32,7 @@ def compute_coherence(model, data_lemmatized, id2word):
     Returns:
     -------
     model_list : List of LDA topic models
-    coherence_values : Coherence values corresponding to the LDA model with 
+    coherence_values : Coherence values corresponding to the LDA model with
         respective number of topics
     """
     coherencemodel = CoherenceModel(model=model, texts=data_lemmatized,
