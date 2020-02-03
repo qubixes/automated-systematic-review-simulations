@@ -17,7 +17,7 @@ class JobRunner():
 
 
 class BatchEntryPoint(BaseEntryPoint):
-    description = "Simulate the performance of ASReview."
+    description = "Run batches ASReview simulations."
 
     def __init__(self):
         super(BatchEntryPoint, self).__init__()
@@ -52,10 +52,9 @@ class BatchEntryPoint(BaseEntryPoint):
 DESCRIPTION_BATCH = """
 Automated Systematic Review (ASReview) batch system for simulation runs.
 
-The simulation modus is used to measure the performance of our
-software on existing systematic reviews. The software shows how many
-papers you could have potentially skipped during the systematic
-review."""
+It has the same interface as the simulation modus, but adds an extra option
+(--n_runs) to run a batch of simulation runs with the same configuration.
+"""
 
 
 def _batch_parser():
