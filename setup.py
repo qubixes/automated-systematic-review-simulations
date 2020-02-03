@@ -13,7 +13,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 # Extract version from cbsodata.py
-for line in open(path.join("asreview", "simulation", "__init__.py")):
+for line in open(path.join("asreviewcontrib", "simulation", "__init__.py")):
     if line.startswith('__version__'):
         exec(line)
         break
@@ -21,12 +21,12 @@ for line in open(path.join("asreview", "simulation", "__init__.py")):
 setup(
     name='asreview-simulation',
     version=__version__,  # noqa
-    description='Parameter grid simulation for ASR',
+    description='Simulation project for ASR',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/msdslab/automated-systematic-review-simulations',
     author='Utrecht University',
-    author_email='r.d.schram@uu.nl',
+    author_email='asreview@uu.nl',
     classifiers=[
         # How mature is this project? Common values are
         #   3 - Alpha
@@ -42,12 +42,9 @@ setup(
         'Programming Language :: Python :: 3.7',
     ],
     keywords='asr automated review batch',
-    packages=find_namespace_packages(include=['asreview.*']),
-    namespace_package=["asreview"],
+    packages=find_namespace_packages(include=['asreviewcontrib.*']),
     install_requires=[
-        "pandas", "numpy", "sklearn", "keras", "matplotlib", "scipy",
-        "hyperopt", "tqdm",
-        "asreview",
+        "asreview-hyperopt", "mpi4py", "asreview",
     ],
 
     extras_require={
@@ -65,9 +62,7 @@ setup(
 
     entry_points={
         "asreview.entry_points": [
-            "hyper-active = asreview.simulation.active_learning:HyperActiveEntryPoint",
-            "hyper-inactive = asreview.simulation.inactive:HyperInactiveEntryPoint",  # noqa
-            "hyper-cluster = asreview.simulation.cluster:HyperClusterEntryPoint",  #noqa
+            "batch = asreviewcontrib.simulation:BatchEntryPoint",
         ]
     },
 
