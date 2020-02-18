@@ -25,7 +25,7 @@ Dependencies are automatically installed.
 To run a batch of simulations on 4 cores and 12 runs, use the following command:
 
 ```bash
-mpirun -n 4 asreview batch ${DATA_SET} --log_file ${DIR}/results.log --n_runs 12
+mpirun -n 4 asreview batch ${DATA_SET} --log_file ${DIR}/results.json --n_runs 12
 ```
 
 It will create 12 files in the ${DIR} directory, while running on 4 cores in parallel.

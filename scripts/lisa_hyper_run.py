@@ -25,7 +25,7 @@ module load eb
 cd {cur_dir}
 source asr-env/bin/activate
 
-srun ./run_hyper.py {args} --n_iter 10000 --mpi
+srun asreview {args} --n_iter 10000 --mpi
 
 date
 
@@ -37,9 +37,9 @@ def main(cli_args):
     if mode == "hyper-cluster":
         from asreviewcontrib.hyperopt.cluster import _parse_arguments  # noqa
     elif mode == "hyper-active":
-        from asreviewcontrib.hyperopt.active_learning import _parse_arguments  # noqa
-    elif mode == "hyper-inactive":
-        from asreviewcontrib.hyperopt.inactive import _parse_arguments  #noqa
+        from asreviewcontrib.hyperopt.active import _parse_arguments  # noqa
+    elif mode == "hyper-passive":
+        from asreviewcontrib.hyperopt.passive import _parse_arguments  #noqa
     else:
         print("Error: need one of the following modes: ['hyper-cluster',"
               "'hyper-active', 'hyper-inactive'")
@@ -67,7 +67,7 @@ def main(cli_args):
         num_nodes=num_nodes, args=" ".join(cli_args), cur_dir=cur_dir,
         time=time)
 
-    os.makedirs("hpc_logs", exist_ok=True)
+    os.makedirs("hpc_batch_files", exist_ok=True)
     with open(batch_file, "w") as fp:
         fp.write(batch_str)
 
