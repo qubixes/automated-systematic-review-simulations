@@ -16,11 +16,10 @@ BATCH_TEMPLATE = """\
 #SBATCH --tasks-per-node {tasks_per_node}
 #SBATCH -N {num_nodes}
 #SBATCH -J hyper_{hyper_name}
-#SBATCH --output={cur_dir}/hpc_logs/{hyper_name}.out
-#SBATCH --error={cur_dir}/hpc_logs/{hyper_name}.err
+#SBATCH --output={batch_dir}/lisa.out
+#SBATCH --error={batch_dir}/lisa.err
 
 module load eb
-# module load Python/3.6.6-intel-2018b
 
 cd {cur_dir}
 source asr-env/bin/activate
@@ -53,8 +52,21 @@ def main(cli_args):
     args = vars(parser.parse_args(cli_args[1:]))
     cur_dir = os.getcwd()
     time = args.pop("time")
+
+    time_pos = None
+    try:
+        time_pos = cli_args.index('-t')
+    except ValueError:
+        try:
+            time_pos = cli_args.index('--time')
+        except ValueError:
+            pass
+    if time_pos is not None:
+        del cli_args[time_pos:time_pos+2]
+
     hyper_name = "_".join(map(str, args.values()))
-    batch_file = os.path.join("hpc_batch_files", hyper_name + ".sh")
+    batch_dir = os.path.join(cur_dir, "hpc_batch_files", hyper_name)
+    batch_file = os.path.join(batch_dir, "batch.sh")
 
     if 'model' in args and args['model'].startswith('lstm'):
         tasks_per_node = 4
@@ -65,9 +77,9 @@ def main(cli_args):
     batch_str = BATCH_TEMPLATE.format(
         hyper_name=hyper_name, tasks_per_node=tasks_per_node,
         num_nodes=num_nodes, args=" ".join(cli_args), cur_dir=cur_dir,
-        time=time)
+        time=time, batch_dir=batch_dir)
 
-    os.makedirs("hpc_batch_files", exist_ok=True)
+    os.makedirs(batch_dir, exist_ok=True)
     with open(batch_file, "w") as fp:
         fp.write(batch_str)
 
