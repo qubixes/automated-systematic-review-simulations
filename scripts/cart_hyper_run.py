@@ -4,9 +4,9 @@
 import os
 import subprocess
 import sys
-
-
 import shlex
+
+from asreviewcontrib.hyperopt.job_utils import get_data_names
 
 
 BATCH_TEMPLATE = """\
@@ -42,7 +42,7 @@ def main(cli_args):
         from asreviewcontrib.hyperopt.passive import _parse_arguments  #noqa
     else:
         print("Error: need one of the following modes: ['hyper-cluster',"
-              "'hyper-active', 'hyper-inactive'")
+              "'hyper-active', 'hyper-inactive']")
         sys.exit(192)
 
     parser = _parse_arguments()
@@ -88,12 +88,20 @@ def main(cli_args):
     batch_dir = os.path.join(cur_dir, "hpc_batch_files", hyper_name)
     batch_file = os.path.join(batch_dir, "batch.sh")
 
-    if 'model' in args and args['model'].startswith('lstm'):
-        tasks_per_node = 4
-        num_nodes = 5
+    total_jobs = len(get_data_names(args["datasets"])) * args["n_run"]
+
+    if total_jobs + 1 > 24:
+        n_tasks = 24
     else:
-        tasks_per_node = 24
+        n_tasks = total_jobs + 1
+
+    if 'model' in args and args['model'].startswith('lstm'):
+        tasks_per_node = 6
+        num_nodes = min(5, max(1, n_tasks//tasks_per_node))
+    else:
+        tasks_per_node = n_tasks
         num_nodes = 1
+
     batch_str = BATCH_TEMPLATE.format(
         hyper_name=hyper_name, tasks_per_node=tasks_per_node,
         num_nodes=num_nodes, args=" ".join(cli_args), cur_dir=cur_dir,
