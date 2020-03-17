@@ -69,7 +69,7 @@ def main(cli_args):
         minutes = 60*hours + int(split_time[1]) + int(split_time[2])/60
 
     if minutes > 60:
-        node_type = "thin"
+        node_type = "normal"
     else:
         node_type = "short"
 
