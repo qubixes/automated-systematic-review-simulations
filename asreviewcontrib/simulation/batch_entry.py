@@ -62,7 +62,7 @@ def _batch_parser():
     parser = _simulate_parser(prog="batch", description=DESCRIPTION_BATCH)
     # Initial data (prior knowledge)
     parser.add_argument(
-        "-r", "--n_runs",
+        "-r", "--n_run",
         default=10,
         type=int,
         help="Number of runs to perform."
