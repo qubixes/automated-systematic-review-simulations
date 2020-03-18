@@ -24,7 +24,7 @@ BATCH_TEMPLATE = """\
 module load eb
 
 cd {cur_dir}
-source asr-env/bin/activate
+source ~/py-env/asreview/bin/activate
 
 srun asreview batch {args}
 
