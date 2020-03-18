@@ -79,10 +79,12 @@ def _batch_parser():
 
 
 def create_jobs(**kwargs):
-    n_runs = kwargs.pop("n_runs")
+    n_runs = kwargs.pop("n_run")
     state_file = kwargs.pop("state_file", None)
     if state_file is None:
         state_file = kwargs.pop("log_file")
+
+    os.makedirs(os.path.dirname(state_file), exist_ok=True)
     jobs = []
     for i in range(n_runs):
         split_path = os.path.splitext(state_file)
