@@ -2,6 +2,7 @@ from copy import deepcopy
 import logging
 import os
 
+import numpy as np
 from mpi4py import MPI
 
 from asreview.entry_points.simulate import _simulate_parser
@@ -83,6 +84,8 @@ def create_jobs(**kwargs):
     state_file = kwargs.pop("state_file", None)
     if state_file is None:
         state_file = kwargs.pop("log_file")
+    init_seed = kwargs.pop("init_seed", None)
+    r = np.random.RandomState(init_seed)
 
     os.makedirs(os.path.dirname(state_file), exist_ok=True)
     jobs = []
@@ -90,6 +93,8 @@ def create_jobs(**kwargs):
         split_path = os.path.splitext(state_file)
         new_state_file = split_path[0] + f"_{i}" + split_path[1]
         new_kwargs = deepcopy(kwargs)
+        if init_seed is not None:
+            new_kwargs["init_seed"] = r.randint(0, 99999999)
         new_kwargs["state_file"] = new_state_file
         jobs.append(new_kwargs)
     return jobs
