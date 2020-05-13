@@ -63,6 +63,7 @@ setup(
     entry_points={
         "asreview.entry_points": [
             "batch = asreviewcontrib.simulation:BatchEntryPoint",
+            "error = asreviewcontrib.simulation.error: ErrorEntryPoint",
         ]
     },
 
